@@ -34,11 +34,12 @@ def handle_connect(args, client_socket):
         UserList.append(args_list[0])
         UserDict[str(ID)] = args_list[0]
         #send response to client
-        clientResponse = {'success': True, 'value': {'ID': str(ID), 'Group1': "First Group", 'Group2': "Second Group", 'Group3': "Third Group", 'Group4': "Fourth Group", 'Group5': "Fifth Group"}}
+        clientResponse = {'success': True, 'command': "connect", 'value': {'ID': str(ID), 'Group1': "First Group", 'Group2': "Second Group", 'Group3': "Third Group", 'Group4': "Fourth Group", 'Group5': "Fifth Group"}}
         clientBytes = json.dumps(clientResponse).encode()
         ClientList[client_socket] = ID
         byte_obj_with_newline = bytes(clientBytes + b"\n")
         client_socket.send(byte_obj_with_newline)
+        UserGroups[ID] = {}
         ID += 1
 
 
@@ -56,15 +57,20 @@ def handle_post(args, client_socket):
     MessageID = MessageID + 1
     response_bytes = json.dumps(response).encode()
     byte_obj_with_newline = bytes(response_bytes + b"\n")
-    groupsToSend = UserGroups[str(args_list[2])]
+    groupsToSend = UserGroups[int(args_list[2])]
     #client_socket.send(byte_obj_with_newline)
     for socket in ClientList:
         userId = ClientList[socket]
         if any(group in UserGroups[userId] for group in groupsToSend):
             socket.send(byte_obj_with_newline)
-                      
+
+
 def handle_users(args, client_socket):
-    response = {'success': True, 'value': {'users': UserList}}
+    args_list = list(args)
+    userId = str(args_list[0])
+    userGroups = UserGroups.get(userId, [])
+    users_in_groups = [user for user in UserList if UserGroups.get(user, []) in userGroups]
+    response = {'success': True, 'command': "users", 'value': {'users': users_in_groups}}
     response_bytes = json.dumps(response).encode()
     byte_obj_with_newline = bytes(response_bytes + b"\n")
     client_socket.send(byte_obj_with_newline)
@@ -74,7 +80,7 @@ def handle_message(args, client_socket):
     #args_list = list(args.values())
     args_list = list(args)
     key = int(args_list[0])
-    response = {'success': True, 'value': {'message': str(MessageDict[key])}}
+    response = {'success': True, 'command': "message", 'value': {'message': str(MessageDict[key])}}
     response_bytes = json.dumps(response).encode()
     byte_obj_with_newline = bytes(response_bytes + b"\n")
     client_socket.send(byte_obj_with_newline)
@@ -84,7 +90,7 @@ def handle_join(args, client_socket):
     global UserGroups
     #args_list = list(args.values())
     args_list = list(args)
-    userId = str(args_list[0])
+    userId = int(args_list[0])
     groupId = str(args_list[1])
     groupName = str(args_list[2])
     print("UserID: " + str(userId))
@@ -92,19 +98,19 @@ def handle_join(args, client_socket):
     print("GroupName: " + str(groupName))
     if groupId in GROUPS:
         UserGroups[userId].append(groupId)
-        response = {'success': True, 'value': {'message': "Joined group '" + groupId + "'"}}
+        response = {'success': True, 'command': "join", 'value': {'message': "Joined group '" + groupId + "'"}}
         response_bytes = json.dumps(response).encode()
         byte_obj_with_newline = bytes(response_bytes + b"\n")
         client_socket.send(byte_obj_with_newline)
     elif groupName in GROUPS.values():
         groupId = tuple([key for key, value in GROUPS.items() if value == groupName])
         UserGroups[userId].append(groupId)
-        response = {'success': True, 'value': {'message': "Joined group '" + groupId + "'"}}
+        response = {'success': True, 'command': "join", 'value': {'message': "Joined group '" + groupId + "'"}}
         response_bytes = json.dumps(response).encode()
         byte_obj_with_newline = bytes(response_bytes + b"\n")
         client_socket.send(byte_obj_with_newline)     
     else:
-        response = {'success': False, 'value': {'message': "Specified group does not exist"}}
+        response = {'success': False, 'command': "join", 'value': {'message': "Specified group does not exist"}}
         response_bytes = json.dumps(response).encode()
         byte_obj_with_newline = bytes(response_bytes + b"\n")
         client_socket.send(byte_obj_with_newline) 
@@ -120,19 +126,19 @@ def handle_leave(args, client_socket):
     groupName = args_list[2]
     if groupId in GROUPS:
         UserGroups[userId].remove(groupId)
-        response = {'success': True, 'value': {'message': "Left group '" + groupId + "'"}}
+        response = {'success': True, 'command': "leave", 'value': {'message': "Left group '" + groupId + "'"}}
         response_bytes = json.dumps(response).encode()
         byte_obj_with_newline = bytes(response_bytes + b"\n")
         client_socket.send(byte_obj_with_newline)
     elif groupName in GROUPS.values():
         groupId = tuple([key for key, value in GROUPS.items() if value == groupName])
         UserGroups[userId].remove(groupId)
-        response = {'success': True, 'value': {'message': "Left group '" + groupId + "'"}}
+        response = {'success': True, 'command': "leave", 'value': {'message': "Left group '" + groupId + "'"}}
         response_bytes = json.dumps(response).encode()
         byte_obj_with_newline = bytes(response_bytes + b"\n")
         client_socket.send(byte_obj_with_newline)     
     else:
-        response = {'success': False, 'value': {'message': "Specified group does not exist"}}
+        response = {'success': False, 'command': "leave", 'value': {'message': "Specified group does not exist"}}
         response_bytes = json.dumps(response).encode()
         byte_obj_with_newline = bytes(response_bytes + b"\n")
         client_socket.send(byte_obj_with_newline) 
@@ -164,7 +170,7 @@ def handle_exit(jsonData):
     print(userKey)
     userName = UserDict.pop(str(userKey))
     UserList.remove(userName)
-    response = {'success': True, 'value': {'message': "Client " + userName + " disconnected"}}
+    response = {'success': True, 'command': "exit", 'value': {'message': "Client " + userName + " disconnected"}}
     response_bytes = json.dumps(response).encode()
     byte_obj_with_newline = bytes(response_bytes + b"\n")
     client_socket.send(byte_obj_with_newline)
