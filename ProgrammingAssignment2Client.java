@@ -5,6 +5,9 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.Socket;
 import java.net.UnknownHostException;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Scanner;
 import java.util.regex.Pattern;
 
@@ -20,6 +23,7 @@ public final class ProgrammingAssignment2Client {
     static boolean isDisconnected = false;
     static SocketControls socketControls = new SocketControls();
     static Scanner reader = new Scanner(System.in);
+    static Map<String, String> groupMap = new HashMap<>();
 
     private static final Pattern PATTERN = Pattern.compile(
             "^(([01]?\\d\\d?|2[0-4]\\d|25[0-5])\\.){3}([01]?\\d\\d?|2[0-4]\\d|25[0-5])$");
@@ -30,7 +34,7 @@ public final class ProgrammingAssignment2Client {
 
         while (!isDisconnected) {
             System.out.println("Enter a command: ");
-            if (isConnected && socketControls.controlReader.ready()) {
+            while (isConnected && socketControls.controlReader.ready()) {
                 socketControls.handleMessageBroadcast();
             }
             parseCommand(reader.nextLine());
@@ -76,6 +80,8 @@ public final class ProgrammingAssignment2Client {
                 }
             } else if (commandStringParts[0].contains("users")) {
                 requestUserList();
+            } else if (commandStringParts[0].contains("groups")) {
+                requestGroupList();
             } else if (commandStringParts[0].contains("message")) {
                 if (commandStringParts.length < 2) {
                     tooFewArguementsMessage();
@@ -120,6 +126,7 @@ public final class ProgrammingAssignment2Client {
         System.out.println("/join\n");
         System.out.println("/post {Subject} {Body}\n");
         System.out.println("/users\n");
+        System.out.println("/groups\n");
         System.out.println("/message {Message ID}\n");
         System.out.println("/leave\n");
         System.out.println("/exit\n");
@@ -163,6 +170,22 @@ public final class ProgrammingAssignment2Client {
             try {
                 socketControls.writeToSocket("users", valueStrings);
                 socketControls.readSocketResponse("users");
+            } catch (IOException e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            }
+        } else {
+            notConnectedMessage();
+        }
+    }
+
+    private static void requestGroupList() {
+        if (isConnected) {
+
+            String[] valueStrings = {};
+            try {
+                socketControls.writeToSocket("groups", valueStrings);
+                socketControls.readSocketResponse("groups");
             } catch (IOException e) {
                 // TODO Auto-generated catch block
                 e.printStackTrace();
@@ -268,6 +291,8 @@ final class SocketControls {
                 handleUsersResponse(valueObject);
             } else if (commandString == "post") {
                 handlePostResponse(valueObject);
+            } else if (commandString == "groups") {
+                handleGroupsResponse(valueObject);
             } else if (commandString == "message") {
                 handleMessageResponse(valueObject);
             } else if (commandString == "exit") {
@@ -307,7 +332,15 @@ final class SocketControls {
         jsonTest.forEach(user -> {
             System.out.println(user.toString());
         });
-        // Now need to do differnt things with value based on the passed in command
+    }
+
+    private void handleGroupsResponse(Object valueObject) {
+        JSONObject valueJson = new JSONObject(valueObject.toString());
+        JSONArray jsonTest = (JSONArray) valueJson.get("groups");
+        System.out.println("Group List:");
+        jsonTest.forEach(group -> {
+            System.out.println(group.toString());
+        });
     }
 
     private void handleConnectResponse(Object valueObject) {
@@ -340,6 +373,3 @@ final class SocketControls {
     }
 
 }
-
-// Add ID to post
-// Handle garceful disconnection
