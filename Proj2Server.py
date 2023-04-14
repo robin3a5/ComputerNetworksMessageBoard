@@ -9,7 +9,7 @@ SERVER_PORT = 5000
 ID = 0
 MessageID = 1
 MessageDict = {}
-ClientList = []
+ClientList = {}
 
 # Define the commands that the server will respond to
 COMMAND_CONNECT = 'connect'
@@ -21,12 +21,12 @@ COMMAND_LEAVE = 'leave'
 
 def handle_connect(args, client_socket):
     global ID
-    global ConnectedClients
+    global ClientList
     #args_list = list(args.values())
     args_list = list(args)
     #handle user already connected
     if args_list[0] in UserList:
-        errorResponse = {'success': False, 'value': {'message': "Already connected"}}
+        errorResponse = {'success': False, 'command': "connect", 'value': {'message': "Already connected"}}
         clientBytes = json.dumps(clientResponse).encode()
         byte_obj_with_newline = bytes(clientBytes + b"\n")
         client_socket.send(byte_obj_with_newline)
@@ -36,8 +36,10 @@ def handle_connect(args, client_socket):
         #send response to client
         clientResponse = {'success': True, 'value': {'ID': str(ID), 'Group1': "First Group", 'Group2': "Second Group", 'Group3': "Third Group", 'Group4': "Fourth Group", 'Group5': "Fifth Group"}}
         clientBytes = json.dumps(clientResponse).encode()
+        ClientList[client_socket] = ID
         byte_obj_with_newline = bytes(clientBytes + b"\n")
         client_socket.send(byte_obj_with_newline)
+        ID += 1
 
 
 def handle_post(args, client_socket):
@@ -46,17 +48,21 @@ def handle_post(args, client_socket):
     global ClientList
     #args_list = list(args.values())
     args_list = list(args)
-    response = {'success': True, 'value': {'MessageID': str(MessageID), 'Sender': str(UserDict[args_list[0]]), 'Date': str(datetime.now()), 'Subject': str(args_list[1])}}
-    MessageDict[MessageID] = str(args_list[2])    
+    print("Sender: " + str(args_list[2]))
+    print("Subject: " + str(args_list[1]))
+    print("Message: " + str(args_list[0]))
+    response = {'success': True, 'command': "post", 'value': {'MessageID': str(MessageID), 'Sender': str(UserDict[args_list[2]]), 'Date': str(datetime.now()), 'Subject': str(args_list[1])}}
+    MessageDict[MessageID] = str(args_list[0])    
     MessageID = MessageID + 1
     response_bytes = json.dumps(response).encode()
     byte_obj_with_newline = bytes(response_bytes + b"\n")
-    client_socket.send(byte_obj_with_newline)
-    for sock in ClientList:
-        if sock != client_socket:
-            sock.send(byte_obj_with_newline)
-
-                    
+    groupsToSend = UserGroups[str(args_list[2])]
+    #client_socket.send(byte_obj_with_newline)
+    for socket in ClientList:
+        userId = ClientList[socket]
+        if any(group in UserGroups[userId] for group in groupsToSend):
+            socket.send(byte_obj_with_newline)
+                      
 def handle_users(args, client_socket):
     response = {'success': True, 'value': {'users': UserList}}
     response_bytes = json.dumps(response).encode()
@@ -81,15 +87,18 @@ def handle_join(args, client_socket):
     userId = str(args_list[0])
     groupId = str(args_list[1])
     groupName = str(args_list[2])
+    print("UserID: " + str(userId))
+    print("GroupID: " + str(groupId))
+    print("GroupName: " + str(groupName))
     if groupId in GROUPS:
-        UserGroups[groupId].append(userId)
+        UserGroups[userId].append(groupId)
         response = {'success': True, 'value': {'message': "Joined group '" + groupId + "'"}}
         response_bytes = json.dumps(response).encode()
         byte_obj_with_newline = bytes(response_bytes + b"\n")
         client_socket.send(byte_obj_with_newline)
     elif groupName in GROUPS.values():
         groupId = tuple([key for key, value in GROUPS.items() if value == groupName])
-        UserGroups[groupId].append(userId)
+        UserGroups[userId].append(groupId)
         response = {'success': True, 'value': {'message': "Joined group '" + groupId + "'"}}
         response_bytes = json.dumps(response).encode()
         byte_obj_with_newline = bytes(response_bytes + b"\n")
@@ -110,15 +119,15 @@ def handle_leave(args, client_socket):
     groupId = args_list[1]
     groupName = args_list[2]
     if groupId in GROUPS:
-        UserGroups[groupId].remove(userId)
-        response = {'success': True, 'value': {'message': "Joined group '" + groupId + "'"}}
+        UserGroups[userId].remove(groupId)
+        response = {'success': True, 'value': {'message': "Left group '" + groupId + "'"}}
         response_bytes = json.dumps(response).encode()
         byte_obj_with_newline = bytes(response_bytes + b"\n")
         client_socket.send(byte_obj_with_newline)
     elif groupName in GROUPS.values():
         groupId = tuple([key for key, value in GROUPS.items() if value == groupName])
-        UserGroups[groupId].remove(userId)
-        response = {'success': True, 'value': {'message': "Joined group '" + groupId + "'"}}
+        UserGroups[userId].remove(groupId)
+        response = {'success': True, 'value': {'message': "Left group '" + groupId + "'"}}
         response_bytes = json.dumps(response).encode()
         byte_obj_with_newline = bytes(response_bytes + b"\n")
         client_socket.send(byte_obj_with_newline)     
@@ -135,7 +144,6 @@ def handle_command(jsonData, client_socket):
     args = jsonData['value']
     # Get the function that handles this command
     handler = COMMAND_HANDLERS.get(commandType)
-    print(handler)
 
     # Call the handler function with the arguments
     if handler:
@@ -184,7 +192,6 @@ def handle_client(client_socket):
 
 def run_server():
     # Create a socket to listen for incoming connections
-    global ClientList
     UserDict = dict()
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server_socket.bind((SERVER_ADDRESS, SERVER_PORT))
@@ -194,7 +201,6 @@ def run_server():
     print('Server listening on ' + SERVER_ADDRESS + ':' + str(SERVER_PORT) + '...')
     while True:
         client_socket, client_address = server_socket.accept()
-        ClientList.append(client_socket)
         thread = threading.Thread(target=handle_client, args=(client_socket,))
         thread.start()
 
@@ -228,7 +234,7 @@ GROUPS = {
     'Group4': "Fourth Group",
     'Group5': "Fifth Group",
 }
-UserGroups = {'Group1': [], 'Group2': [], 'Group3': [], 'Group4': [], 'Group5': []}
+UserGroups = {}
 UserList = []
 UserDict = {}
 
