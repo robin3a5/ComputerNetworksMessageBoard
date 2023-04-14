@@ -39,7 +39,7 @@ def handle_connect(args, client_socket):
         ClientList[client_socket] = ID
         byte_obj_with_newline = bytes(clientBytes + b"\n")
         client_socket.send(byte_obj_with_newline)
-        UserGroups[ID] = {}
+        UserGroups[ID] = []
         ID += 1
 
 
