@@ -1,9 +1,15 @@
-import java.io.*;
-import java.net.*;
-import java.nio.charset.StandardCharsets;
+import java.io.BufferedReader;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.net.Socket;
+import java.net.UnknownHostException;
 import java.util.Scanner;
 import java.util.regex.Pattern;
-import org.json.*;
+
+import org.json.JSONArray;
+import org.json.JSONObject;
 
 /**
  * @author Alexander
@@ -13,19 +19,21 @@ public final class ProgrammingAssignment2Client {
     static boolean isConnected = false;
     static boolean isDisconnected = false;
     static SocketControls socketControls = new SocketControls();
+    static Scanner reader = new Scanner(System.in);
 
     private static final Pattern PATTERN = Pattern.compile(
             "^(([01]?\\d\\d?|2[0-4]\\d|25[0-5])\\.){3}([01]?\\d\\d?|2[0-4]\\d|25[0-5])$");
 
     public static void main(String argv[]) throws Exception {
         printWelcomeText();
-        String commandString = "";
-        Scanner reader = new Scanner(System.in);
+        reader = new Scanner(System.in);
 
         while (!isDisconnected) {
             System.out.println("Enter a command: ");
+            if (isConnected && socketControls.controlReader.ready()) {
+                socketControls.handleMessageBroadcast();
+            }
             parseCommand(reader.nextLine());
-            System.out.println(commandString);
         }
         reader.close();
         if (isConnected) {
@@ -120,9 +128,9 @@ public final class ProgrammingAssignment2Client {
 
     private static void postMessage(String subject, String body) throws IOException {
         if (isConnected) {
-            System.out.println(" in /post\n");
-            String[] valueStrings = { subject, body };
+            String[] valueStrings = { Integer.toString(socketControls.userID), subject, body };
             socketControls.writeToSocket("post", valueStrings);
+            socketControls.readSocketResponse("post");
         } else {
             notConnectedMessage();
         }
@@ -134,10 +142,11 @@ public final class ProgrammingAssignment2Client {
 
     private static void leaveGroup() {
         if (isConnected) {
-            System.out.println("in /leave\n");
+
             String[] valueStrings = {};
             try {
                 socketControls.writeToSocket("leave", valueStrings);
+                socketControls.readSocketResponse("leave");
             } catch (IOException e) {
                 // TODO Auto-generated catch block
                 e.printStackTrace();
@@ -149,10 +158,11 @@ public final class ProgrammingAssignment2Client {
 
     private static void requestUserList() {
         if (isConnected) {
-            System.out.println("in /users\n");
+
             String[] valueStrings = {};
             try {
                 socketControls.writeToSocket("users", valueStrings);
+                socketControls.readSocketResponse("users");
             } catch (IOException e) {
                 // TODO Auto-generated catch block
                 e.printStackTrace();
@@ -164,11 +174,10 @@ public final class ProgrammingAssignment2Client {
 
     private static void joinGroup() {
         if (isConnected) {
-            System.out.println("in /join\n");
             String[] valueStrings = {};
             try {
                 socketControls.writeToSocket("join", valueStrings);
-                socketControls.readFromSocket();
+                socketControls.readSocketResponse("join");
             } catch (IOException e) {
                 // TODO Auto-generated catch block
                 e.printStackTrace();
@@ -179,17 +188,24 @@ public final class ProgrammingAssignment2Client {
     }
 
     private static void connectToBoard(String ipAddr, int portNumber) throws UnknownHostException, IOException {
-        socketControls.createSocketConnection(ipAddr, portNumber);
-        isConnected = true;
-        System.out.println("in /connect\n");
+        if (!isConnected) {
+            System.out.println("Please input a username:");
+            String username = reader.nextLine();
+            socketControls.createSocketConnection(ipAddr, portNumber, username);
+            isConnected = true;
+
+        } else {
+            System.out.println("You're already connected!\n");
+        }
     }
 
     private static void retrieveMessage(int messageID) {
         if (isConnected) {
-            System.out.println("in /message\n");
+
             String[] valueStrings = { String.valueOf(messageID) };
             try {
                 socketControls.writeToSocket("message", valueStrings);
+                socketControls.readSocketResponse("message");
             } catch (IOException e) {
                 // TODO Auto-generated catch block
                 e.printStackTrace();
@@ -217,17 +233,17 @@ final class SocketControls {
     DataOutputStream controlWriter = null;
     String currentResponse;
     InputStream is;
+    int userID = 999;
 
-    public void createSocketConnection(String address, int portNumber)
+    public void createSocketConnection(String address, int portNumber, String username)
             throws UnknownHostException, IOException {
         controlSocket = new Socket(address, portNumber);
         is = this.controlSocket.getInputStream();
         controlWriter = new DataOutputStream(this.controlSocket.getOutputStream());
         controlReader = new BufferedReader(new InputStreamReader(is));
-        String[] valueStrings = { "Username" };
+        String[] valueStrings = { username };
         writeToSocket("connect", valueStrings);
-        // String codeLine = controlReader.readLine();
-        // String[] lineResult = codeLine.split(" ");
+        readSocketResponse("connect");
     }
 
     public void writeToSocket(String commandString, String[] valueStrings) throws IOException {
@@ -236,17 +252,93 @@ final class SocketControls {
         json.put("command", commandString);
         controlWriter.writeUTF(json.toString());
         System.out.println(json.toString());
-        String requestLine = controlReader.readLine();
-        System.out.println(requestLine);
     }
 
-    public void readFromSocket() throws IOException {
+    public void readSocketResponse(String commandString) throws IOException {
+        String requestLine = controlReader.readLine();
+        JSONObject newObject = new JSONObject(requestLine);
+        System.out.println(newObject);
+        if ((boolean) newObject.get("success")) {
+            System.out.println("Value worked for test");
+            // Now check value
+            Object valueObject = newObject.get("value");
+            System.out.println(valueObject.toString());
+            // Now have object containing value
+            if (commandString == "users") {
+                handleUsersResponse(valueObject);
+            } else if (commandString == "post") {
+                handlePostResponse(valueObject);
+            } else if (commandString == "message") {
+                handleMessageResponse(valueObject);
+            } else if (commandString == "exit") {
+                handleExitResponse(valueObject);
+            } else if (commandString == "join") {
+                handleJoinResponse(valueObject);
+            } else if (commandString == "connect") {
+                handleConnectResponse(valueObject);
+            }
+
+        } else {
+            System.out.println("Sorry something went wrong. Please try again");
+        }
 
     }
 
     public void closeSocketConnection(Socket controlSocket) throws IOException {
         controlSocket.close();
     }
+
+    public void handleMessageBroadcast() {
+        try {
+            // TODO: Finish impl
+            String requestLine = controlReader.readLine();
+            JSONObject newObject = new JSONObject(requestLine);
+            System.out.println(newObject);
+        } catch (IOException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+    }
+
+    private void handleUsersResponse(Object valueObject) {
+        JSONObject valueJson = new JSONObject(valueObject.toString());
+        JSONArray jsonTest = (JSONArray) valueJson.get("users");
+        System.out.println("User List:");
+        jsonTest.forEach(user -> {
+            System.out.println(user.toString());
+        });
+        // Now need to do differnt things with value based on the passed in command
+    }
+
+    private void handleConnectResponse(Object valueObject) {
+        JSONObject valueJson = new JSONObject(valueObject.toString());
+        userID = Integer.parseInt((String) valueJson.get("ID"));
+    }
+
+    private void handleMessageResponse(Object valueObject) {
+        JSONObject valueJson = new JSONObject(valueObject.toString());
+        String message = (String) valueJson.get("message");
+        System.out.println(message);
+    }
+
+    private void handlePostResponse(Object valueObject) {
+        JSONObject valueJson = new JSONObject(valueObject.toString());
+        String messageID = (String) valueJson.get("MessageID");
+        String sender = (String) valueJson.get("Sender");
+        String date = (String) valueJson.get("Date");
+        String subject = (String) valueJson.get("Subject");
+        // TODO: Format message
+        System.out.println(messageID + sender + date + subject);
+    }
+
+    private void handleJoinResponse(Object valueObject) {
+        JSONObject valueJson = new JSONObject(valueObject.toString());
+        // TODO: Finish impl
+    }
+
+    private void handleExitResponse(Object valueObject) {
+    }
+
 }
 
 // Add ID to post
