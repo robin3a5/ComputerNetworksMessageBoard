@@ -6,7 +6,6 @@ import java.io.InputStreamReader;
 import java.net.Socket;
 import java.net.UnknownHostException;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Scanner;
 import java.util.regex.Pattern;
@@ -31,12 +30,8 @@ public final class ProgrammingAssignment2Client {
     public static void main(String argv[]) throws Exception {
         printWelcomeText();
         reader = new Scanner(System.in);
-
+        System.out.println("Enter a command: ");
         while (!isDisconnected) {
-            System.out.println("Enter a command: ");
-            while (isConnected && socketControls.controlReader.ready()) {
-                socketControls.handleMessageBroadcast();
-            }
             parseCommand(reader.nextLine());
         }
         reader.close();
@@ -71,7 +66,7 @@ public final class ProgrammingAssignment2Client {
                     }
                 }
             } else if (commandStringParts[0].contains("join")) {
-                joinGroup();
+                joinGroup(commandStringParts[1]);
             } else if (commandStringParts[0].contains("post")) {
                 if (commandStringParts.length < 3) {
                     tooFewArguementsMessage();
@@ -135,9 +130,8 @@ public final class ProgrammingAssignment2Client {
 
     private static void postMessage(String subject, String body) throws IOException {
         if (isConnected) {
-            String[] valueStrings = { Integer.toString(socketControls.userID), subject, body };
+            String[] valueStrings = { subject, body, Integer.toString(socketControls.userID), };
             socketControls.writeToSocket("post", valueStrings);
-            socketControls.readSocketResponse("post");
         } else {
             notConnectedMessage();
         }
@@ -153,7 +147,6 @@ public final class ProgrammingAssignment2Client {
             String[] valueStrings = {};
             try {
                 socketControls.writeToSocket("leave", valueStrings);
-                socketControls.readSocketResponse("leave");
             } catch (IOException e) {
                 // TODO Auto-generated catch block
                 e.printStackTrace();
@@ -165,11 +158,9 @@ public final class ProgrammingAssignment2Client {
 
     private static void requestUserList() {
         if (isConnected) {
-
-            String[] valueStrings = {};
+            String[] valueStrings = {Integer.toString(socketControls.userID)};
             try {
                 socketControls.writeToSocket("users", valueStrings);
-                socketControls.readSocketResponse("users");
             } catch (IOException e) {
                 // TODO Auto-generated catch block
                 e.printStackTrace();
@@ -185,7 +176,6 @@ public final class ProgrammingAssignment2Client {
             String[] valueStrings = {};
             try {
                 socketControls.writeToSocket("groups", valueStrings);
-                socketControls.readSocketResponse("groups");
             } catch (IOException e) {
                 // TODO Auto-generated catch block
                 e.printStackTrace();
@@ -195,12 +185,12 @@ public final class ProgrammingAssignment2Client {
         }
     }
 
-    private static void joinGroup() {
+    private static void joinGroup(String groupString) {
+        // TODO: Need to do some group validation
         if (isConnected) {
-            String[] valueStrings = {};
+            String[] valueStrings = { Integer.toString(socketControls.userID), groupString, groupString};
             try {
                 socketControls.writeToSocket("join", valueStrings);
-                socketControls.readSocketResponse("join");
             } catch (IOException e) {
                 // TODO Auto-generated catch block
                 e.printStackTrace();
@@ -228,7 +218,6 @@ public final class ProgrammingAssignment2Client {
             String[] valueStrings = { String.valueOf(messageID) };
             try {
                 socketControls.writeToSocket("message", valueStrings);
-                socketControls.readSocketResponse("message");
             } catch (IOException e) {
                 // TODO Auto-generated catch block
                 e.printStackTrace();
@@ -249,37 +238,38 @@ public final class ProgrammingAssignment2Client {
 
 }
 
-final class SocketControls {
-    int port = 0;
-    Socket controlSocket = null;
+final class SocketReaderThread extends Thread {
+    private Socket socketConnection;
     BufferedReader controlReader = null;
     DataOutputStream controlWriter = null;
-    String currentResponse;
     InputStream is;
-    int userID = 999;
 
-    public void createSocketConnection(String address, int portNumber, String username)
-            throws UnknownHostException, IOException {
-        controlSocket = new Socket(address, portNumber);
-        is = this.controlSocket.getInputStream();
-        controlWriter = new DataOutputStream(this.controlSocket.getOutputStream());
-        controlReader = new BufferedReader(new InputStreamReader(is));
-        String[] valueStrings = { username };
-        writeToSocket("connect", valueStrings);
-        readSocketResponse("connect");
+    public SocketReaderThread(Socket socket) {
+        socketConnection = socket;
     }
 
-    public void writeToSocket(String commandString, String[] valueStrings) throws IOException {
-        JSONObject json = new JSONObject();
-        json.put("value", valueStrings);
-        json.put("command", commandString);
-        controlWriter.writeUTF(json.toString());
-        System.out.println(json.toString());
+    @Override
+    public void run() {
+        while (socketConnection.isConnected()) {
+            try {
+                is = this.socketConnection.getInputStream();
+                controlWriter = new DataOutputStream(this.socketConnection.getOutputStream());
+                controlReader = new BufferedReader(new InputStreamReader(is));
+                while (controlReader.ready()) {
+                    readSocketResponse();
+                    System.out.println("Enter a command: ");
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
     }
 
-    public void readSocketResponse(String commandString) throws IOException {
+    public void readSocketResponse() throws IOException {
         String requestLine = controlReader.readLine();
         JSONObject newObject = new JSONObject(requestLine);
+        System.out.println(newObject);
+        String commandString = (String) newObject.get("command");
         System.out.println(newObject);
         if ((boolean) newObject.get("success")) {
             System.out.println("Value worked for test");
@@ -287,30 +277,27 @@ final class SocketControls {
             Object valueObject = newObject.get("value");
             System.out.println(valueObject.toString());
             // Now have object containing value
-            if (commandString == "users") {
+            if (commandString.equals("users")) {
                 handleUsersResponse(valueObject);
-            } else if (commandString == "post") {
-                handlePostResponse(valueObject);
-            } else if (commandString == "groups") {
-                handleGroupsResponse(valueObject);
-            } else if (commandString == "message") {
-                handleMessageResponse(valueObject);
-            } else if (commandString == "exit") {
-                handleExitResponse(valueObject);
-            } else if (commandString == "join") {
-                handleJoinResponse(valueObject);
-            } else if (commandString == "connect") {
-                handleConnectResponse(valueObject);
             }
-
+            if (commandString.equals("post")) {
+                handlePostResponse(valueObject);
+            }
+            if (commandString.equals("groups")) {
+                handleGroupsResponse(valueObject);
+            }
+            if (commandString.equals("message")) {
+                handleMessageResponse(valueObject);
+            }
+            if (commandString.equals("exit")) {
+                handleExitResponse(valueObject);
+            }
+            if (commandString.equals("join")) {
+                handleJoinResponse(valueObject);
+            }
         } else {
             System.out.println("Sorry something went wrong. Please try again");
         }
-
-    }
-
-    public void closeSocketConnection(Socket controlSocket) throws IOException {
-        controlSocket.close();
     }
 
     public void handleMessageBroadcast() {
@@ -343,11 +330,6 @@ final class SocketControls {
         });
     }
 
-    private void handleConnectResponse(Object valueObject) {
-        JSONObject valueJson = new JSONObject(valueObject.toString());
-        userID = Integer.parseInt((String) valueJson.get("ID"));
-    }
-
     private void handleMessageResponse(Object valueObject) {
         JSONObject valueJson = new JSONObject(valueObject.toString());
         String message = (String) valueJson.get("message");
@@ -366,10 +348,72 @@ final class SocketControls {
 
     private void handleJoinResponse(Object valueObject) {
         JSONObject valueJson = new JSONObject(valueObject.toString());
+        String message = (String) valueJson.get("message");
+        System.out.println(message);
+
         // TODO: Finish impl
     }
 
     private void handleExitResponse(Object valueObject) {
+    }
+
+}
+
+final class SocketControls {
+    int port = 0;
+    Socket controlSocket = null;
+    BufferedReader controlReader = null;
+    DataOutputStream controlWriter = null;
+    InputStream is;
+    int userID = 999;
+
+    public void createSocketConnection(String address, int portNumber, String username)
+            throws UnknownHostException, IOException {
+        controlSocket = new Socket(address, portNumber);
+        is = this.controlSocket.getInputStream();
+        controlWriter = new DataOutputStream(this.controlSocket.getOutputStream());
+        controlReader = new BufferedReader(new InputStreamReader(is));
+        String[] valueStrings = { username };
+        writeToSocket("connect", valueStrings);
+        readSocketResponse();
+    }
+
+    public void writeToSocket(String commandString, String[] valueStrings) throws IOException {
+        JSONObject json = new JSONObject();
+        json.put("value", valueStrings);
+        json.put("command", commandString);
+        controlWriter.writeUTF(json.toString());
+        System.out.println(json.toString());
+    }
+
+    public void readSocketResponse() throws IOException {
+        String requestLine = controlReader.readLine();
+        JSONObject newObject = new JSONObject(requestLine);
+        System.out.println(newObject);
+        if ((boolean) newObject.get("success")) {
+            Object valueObject = newObject.get("value");
+            System.out.println(valueObject.toString());
+            // Now have object containing value
+            handleConnectResponse(valueObject);
+        } else {
+            System.out.println("Sorry username was taken! Please try another!");
+        }
+
+    }
+
+    private void handleConnectResponse(Object valueObject) {
+        JSONObject valueJson = new JSONObject(valueObject.toString());
+        userID = Integer.parseInt((String) valueJson.get("ID"));
+        // Need to add group stuff here as well
+        Thread socketThread = new Thread(new SocketReaderThread(controlSocket));
+
+        // Start the thread.
+        socketThread.start();
+        System.out.println("Enter a command: ");
+    }
+
+    public void closeSocketConnection(Socket controlSocket) throws IOException {
+        controlSocket.close();
     }
 
 }
