@@ -31,7 +31,7 @@ def handle_connect(args, client_socket):
     #handle user already connected
     if args_list[0] in UserList:
         errorResponse = {'success': False, 'command': "connect", 'value': {'message': "Already connected"}}
-        clientBytes = json.dumps(clientResponse).encode()
+        clientBytes = json.dumps(errorResponse).encode()
         byte_obj_with_newline = bytes(clientBytes + b"\n")
         client_socket.send(byte_obj_with_newline)
     else:    
