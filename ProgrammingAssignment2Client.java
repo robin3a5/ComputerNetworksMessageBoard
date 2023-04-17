@@ -22,7 +22,6 @@ public final class ProgrammingAssignment2Client {
     static boolean isDisconnected = false;
     static SocketControls socketControls = new SocketControls();
     static Scanner reader = new Scanner(System.in);
-    static Map<String, String> groupMap = new HashMap<>();
 
     private static final Pattern PATTERN = Pattern.compile(
             "^(([01]?\\d\\d?|2[0-4]\\d|25[0-5])\\.){3}([01]?\\d\\d?|2[0-4]\\d|25[0-5])$");
@@ -66,7 +65,7 @@ public final class ProgrammingAssignment2Client {
                     }
                 }
             } else if (commandStringParts[0].contains("join")) {
-                joinGroup(commandStringParts[1]);
+                joinGroup();
             } else if (commandStringParts[0].contains("post")) {
                 if (commandStringParts.length < 3) {
                     tooFewArguementsMessage();
@@ -119,7 +118,7 @@ public final class ProgrammingAssignment2Client {
 
     private static void postGroupMessage(String subject, String body,
             String groupString) throws IOException {
-        // TODO: need validation to make sure groupsting is in the groups list
+        // TODO: need validation to make sure groupstring is in the groups list
         if (isConnected) {
             String[] valueStrings = { subject, body, Integer.toString(socketControls.userID), groupString };
             socketControls.writeToSocket("grouppost", valueStrings);
@@ -145,7 +144,7 @@ public final class ProgrammingAssignment2Client {
 
     private static void joinPrivateGroup(String groupString) {
         if (isConnected) {
-            String[] valueStrings = { groupString };
+            String[] valueStrings = { Integer.toString(socketControls.userID), groupString, groupString };
             try {
                 socketControls.writeToSocket("groupjoin", valueStrings);
             } catch (IOException e) {
@@ -174,7 +173,7 @@ public final class ProgrammingAssignment2Client {
 
     private static void leavePrivateGroup(String groupString) {
         if (isConnected) {
-            String[] valueStrings = { groupString };
+            String[] valueStrings = { Integer.toString(socketControls.userID), groupString, groupString };
             try {
                 socketControls.writeToSocket("groupleave", valueStrings);
             } catch (IOException e) {
@@ -228,8 +227,7 @@ public final class ProgrammingAssignment2Client {
 
     private static void leaveGroup() {
         if (isConnected) {
-
-            String[] valueStrings = {};
+            String[] valueStrings = { Integer.toString(socketControls.userID) };
             try {
                 socketControls.writeToSocket("leave", valueStrings);
             } catch (IOException e) {
@@ -243,7 +241,7 @@ public final class ProgrammingAssignment2Client {
 
     private static void requestUserList() {
         if (isConnected) {
-            String[] valueStrings = { Integer.toString(socketControls.userID) };
+            String[] valueStrings = {};
             try {
                 socketControls.writeToSocket("users", valueStrings);
             } catch (IOException e) {
@@ -270,10 +268,10 @@ public final class ProgrammingAssignment2Client {
         }
     }
 
-    private static void joinGroup(String groupString) {
+    private static void joinGroup() {
         // TODO: Need to do some group validation
         if (isConnected) {
-            String[] valueStrings = { Integer.toString(socketControls.userID), groupString, groupString };
+            String[] valueStrings = { Integer.toString(socketControls.userID) };
             try {
                 socketControls.writeToSocket("join", valueStrings);
             } catch (IOException e) {
@@ -385,18 +383,6 @@ final class SocketReaderThread extends Thread {
         }
     }
 
-    public void handleMessageBroadcast() {
-        try {
-            // TODO: Finish impl
-            String requestLine = controlReader.readLine();
-            JSONObject newObject = new JSONObject(requestLine);
-            System.out.println(newObject);
-        } catch (IOException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
-        }
-    }
-
     private void handleUsersResponse(Object valueObject) {
         JSONObject valueJson = new JSONObject(valueObject.toString());
         JSONArray jsonTest = (JSONArray) valueJson.get("users");
@@ -427,16 +413,13 @@ final class SocketReaderThread extends Thread {
         String sender = (String) valueJson.get("Sender");
         String date = (String) valueJson.get("Date");
         String subject = (String) valueJson.get("Subject");
-        // TODO: Format message
-        System.out.println(messageID + sender + date + subject);
+        System.out.println(date + " - " + sender + ": " + subject + " (" + messageID + ")");
     }
 
     private void handleJoinResponse(Object valueObject) {
         JSONObject valueJson = new JSONObject(valueObject.toString());
         String message = (String) valueJson.get("message");
         System.out.println(message);
-
-        // TODO: Finish impl
     }
 
     private void handleExitResponse(Object valueObject) {
@@ -451,6 +434,7 @@ final class SocketControls {
     DataOutputStream controlWriter = null;
     InputStream is;
     int userID = 999;
+    static Map<String, String> groupMap = new HashMap<>();
 
     public void createSocketConnection(String address, int portNumber, String username)
             throws UnknownHostException, IOException {
@@ -477,11 +461,11 @@ final class SocketControls {
         System.out.println(newObject);
         if ((boolean) newObject.get("success")) {
             Object valueObject = newObject.get("value");
-            System.out.println(valueObject.toString());
             // Now have object containing value
             handleConnectResponse(valueObject);
         } else {
             System.out.println("Sorry username was taken! Please try another!");
+            // TODO: need to prompt for new username entry
         }
 
     }
@@ -489,7 +473,17 @@ final class SocketControls {
     private void handleConnectResponse(Object valueObject) {
         JSONObject valueJson = new JSONObject(valueObject.toString());
         userID = Integer.parseInt((String) valueJson.get("ID"));
-        // Need to add group stuff here as well
+        groupMap.put("Group1", (String) valueJson.get("Group1"));
+        groupMap.put("Group2", (String) valueJson.get("Group2"));
+        groupMap.put("Group3", (String) valueJson.get("Group3"));
+        groupMap.put("Group4", (String) valueJson.get("Group4"));
+        groupMap.put("Group5", (String) valueJson.get("Group5"));
+
+        // TODO: Use this for validation check
+        groupMap.forEach((k, v) -> {
+            System.out.println(k + " " + v);
+        });
+
         Thread socketThread = new Thread(new SocketReaderThread(controlSocket));
 
         // Start the thread.
