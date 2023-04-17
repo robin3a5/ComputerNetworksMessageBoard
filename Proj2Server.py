@@ -219,13 +219,10 @@ def handle_groupJoin(args, client_socket):
         client_socket.send(byte_obj_with_newline)
 
 def handle_leave(args, client_socket):
-    # remove from user list
-    global UserList
     global ClientList
     global UserGroups
     args_list = list(args)
     userId = args_list[0]
-    userName = UserDict[str(userId)]
     UserGroups[int(userId)].remove("Public")
     response = {'success': True, 'command': "leave", 'value': {'message': "Left the board"}}
     response_bytes = json.dumps(response).encode()
@@ -300,6 +297,12 @@ def handle_exit(userId, client_socket):
     # leave all groups, leave public board
     global UserDict
     global UserList
+    global UserGroups
+    leaveArgs = [userId]
+    handle_leave(leaveArgs, client_socket)
+    for group in UserGroups[int(userId)]:
+        groupLeaveArgs = [userId, group, ""]
+        handle_groupLeave(groupLeaveArgs, client_socket)
     userName = UserDict.pop(str(userId))
     UserList.remove(userName)
     response = {'success': True, 'command': "exit", 'value': {'message': "Client " + userName + " has left the board"}}
