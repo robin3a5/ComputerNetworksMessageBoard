@@ -67,34 +67,54 @@ public final class ProgrammingAssignment2Client {
             } else if (commandStringParts[0].contains("groups")) {
                 requestGroupList();
             } else if (commandStringParts[0].contains("grouppost")) {
-                if (validateGroup(commandStringParts[3])) {
-                    postGroupMessage(commandStringParts[1], commandStringParts[2], commandStringParts[3]);
+                if (commandStringParts.length < 4) {
+                    tooFewArguementsMessage();
                 } else {
-                    groupErrorMessage(commandStringParts[3]);
+                    if (validateGroup(commandStringParts[3])) {
+                        postGroupMessage(commandStringParts[1], commandStringParts[2], commandStringParts[3]);
+                    } else {
+                        groupErrorMessage(commandStringParts[3]);
+                    }
                 }
             } else if (commandStringParts[0].contains("groupusers")) {
-                if (validateGroup(commandStringParts[1])) {
-                    requestGroupUsers(commandStringParts[1]);
+                if (commandStringParts.length < 2) {
+                    tooFewArguementsMessage();
                 } else {
-                    groupErrorMessage(commandStringParts[1]);
+                    if (validateGroup(commandStringParts[1])) {
+                        requestGroupUsers(commandStringParts[1]);
+                    } else {
+                        groupErrorMessage(commandStringParts[1]);
+                    }
                 }
             } else if (commandStringParts[0].contains("groupmessage")) {
-                if (validateGroup(commandStringParts[2])) {
-                    retrieveGroupMessage(commandStringParts[1], commandStringParts[2]);
+                if (commandStringParts.length < 3) {
+                    tooFewArguementsMessage();
                 } else {
-                    groupErrorMessage(commandStringParts[2]);
+                    if (validateGroup(commandStringParts[2])) {
+                        retrieveGroupMessage(commandStringParts[1], commandStringParts[2]);
+                    } else {
+                        groupErrorMessage(commandStringParts[2]);
+                    }
                 }
             } else if (commandStringParts[0].contains("groupjoin")) {
-                if (validateGroup(commandStringParts[1])) {
-                    joinPrivateGroup(commandStringParts[1]);
+                if (commandStringParts.length < 2) {
+                    tooFewArguementsMessage();
                 } else {
-                    groupErrorMessage(commandStringParts[1]);
+                    if (validateGroup(commandStringParts[1])) {
+                        joinPrivateGroup(commandStringParts[1]);
+                    } else {
+                        groupErrorMessage(commandStringParts[1]);
+                    }
                 }
             } else if (commandStringParts[0].contains("groupleave")) {
-                if (validateGroup(commandStringParts[1])) {
-                    leavePrivateGroup(commandStringParts[1]);
+                if (commandStringParts.length < 2) {
+                    tooFewArguementsMessage();
                 } else {
-                    groupErrorMessage(commandStringParts[1]);
+                    if (validateGroup(commandStringParts[1])) {
+                        leavePrivateGroup(commandStringParts[1]);
+                    } else {
+                        groupErrorMessage(commandStringParts[1]);
+                    }
                 }
             } else if (commandStringParts[0].contains("join")) {
                 joinGroup();
@@ -138,7 +158,7 @@ public final class ProgrammingAssignment2Client {
     private static void postGroupMessage(String subject, String body,
             String groupString) throws IOException {
         if (isConnected) {
-            String[] valueStrings = { subject, body, Integer.toString(socketControls.userID), groupString };
+            String[] valueStrings = { body, subject, Integer.toString(socketControls.userID), groupString };
             socketControls.writeToSocket("grouppost", valueStrings);
         } else {
             notConnectedMessage();
@@ -228,7 +248,7 @@ public final class ProgrammingAssignment2Client {
 
     private static void postMessage(String subject, String body) throws IOException {
         if (isConnected) {
-            String[] valueStrings = { subject, body, Integer.toString(socketControls.userID), };
+            String[] valueStrings = { body, subject, Integer.toString(socketControls.userID), };
             socketControls.writeToSocket("post", valueStrings);
         } else {
             notConnectedMessage();
@@ -352,7 +372,7 @@ public final class ProgrammingAssignment2Client {
 
     private static void groupErrorMessage(String groupString) {
         System.out.println("Your entered group: " + groupString
-                + "does not correspond to a recognized group please enter a valid one");
+                + " does not correspond to a recognized group please enter a valid one");
     }
 
     private static boolean validateGroup(String groupString) {
