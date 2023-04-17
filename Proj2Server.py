@@ -131,6 +131,7 @@ def handle_groupMessage(args, client_socket):
 
     
 def handle_join(args, client_socket):
+    # send last 2 messages
     global GROUPS
     global UserGroups
     global ClientList
@@ -150,8 +151,10 @@ def handle_join(args, client_socket):
             response_bytes = json.dumps(response).encode()
             byte_obj_with_newline = bytes(response_bytes + b"\n")
             socket.send(byte_obj_with_newline)
+    
 
 def autoJoin(userId, client_socket):
+    # send last 2 messages
     global GROUPS
     global UserGroups
     global ClientList
@@ -172,6 +175,7 @@ def autoJoin(userId, client_socket):
             socket.send(byte_obj_with_newline)
             
 def handle_groupJoin(args, client_socket):
+    # send last 2 messages
     global GROUPS
     global UserGroups
     global ClientList
@@ -227,8 +231,8 @@ def handle_leave(args, client_socket):
     response = {'success': True, 'command': "leave", 'value': {'message': "Left the board"}}
     response_bytes = json.dumps(response).encode()
     byte_obj_with_newline = bytes(response_bytes + b"\n")
-    client_socket.send(byte_obj_with_newline)
-    
+    sendCommand(byte_obj_with_newline, client_socket)
+
 def handle_groupLeave(args, client_socket):
     global GROUPS
     global UserGroups
@@ -244,7 +248,7 @@ def handle_groupLeave(args, client_socket):
         response = {'success': True, 'command': "leave", 'value': {'message': "Left group '" + groupId + "'"}}
         response_bytes = json.dumps(response).encode()
         byte_obj_with_newline = bytes(response_bytes + b"\n")
-        client_socket.send(byte_obj_with_newline)
+        sendCommand(byte_obj_with_newline, client_socket)
         for userKey, userGroupList in UserGroups.items():
             if groupId in userGroupList:
                 usersInGroup.append(userKey)
@@ -260,7 +264,7 @@ def handle_groupLeave(args, client_socket):
         response = {'success': True, 'command': "leave", 'value': {'message': "Left group '" + groupId + "'"}}
         response_bytes = json.dumps(response).encode()
         byte_obj_with_newline = bytes(response_bytes + b"\n")
-        client_socket.send(byte_obj_with_newline)
+        sendCommand(byte_obj_with_newline, client_socket)
         for userKey, userGroupList in UserGroups.items():
             if groupId in userGroupList:
                 usersInGroup.append(userKey)
@@ -274,7 +278,14 @@ def handle_groupLeave(args, client_socket):
         response = {'success': False, 'command': "leave", 'value': {'message': "Specified group does not exist"}}
         response_bytes = json.dumps(response).encode()
         byte_obj_with_newline = bytes(response_bytes + b"\n")
-        client_socket.send(byte_obj_with_newline)
+        sendCommand(byte_obj_with_newline, client_socket)
+
+def sendCommand(bytes, client_socket):
+    try:
+        client_socket.send(bytes)
+    except ConnectionResetError:
+        print("Client socket closed")
+
 
 def handle_command(jsonData, client_socket):
     # Parse the command into the command name and arguments
@@ -294,13 +305,13 @@ def handle_command(jsonData, client_socket):
 
 
 def handle_exit(userId, client_socket):
-    # leave all groups, leave public board
     global UserDict
     global UserList
     global UserGroups
     leaveArgs = [userId]
     handle_leave(leaveArgs, client_socket)
-    for group in UserGroups[int(userId)]:
+    groups = UserGroups[int(userId)].copy()
+    for group in groups:
         groupLeaveArgs = [userId, group, ""]
         handle_groupLeave(groupLeaveArgs, client_socket)
     userName = UserDict.pop(str(userId))
@@ -314,6 +325,7 @@ def handle_exit(userId, client_socket):
             break
     for socket in ClientList:
         socket.send(byte_obj_with_newline)
+    UserGroups.pop(int(userId))
 
 
 def handle_client(client_socket):
