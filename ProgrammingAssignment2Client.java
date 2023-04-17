@@ -92,10 +92,21 @@ public final class ProgrammingAssignment2Client {
                 }
             } else if (commandStringParts[0].contains("leave")) {
                 leaveGroup();
-            } else if (commandStringParts[0].contains("exit")) {
-                disconnect();
+            } else if (commandStringParts[0].contains("grouppost")) {
+                // TODO: need validation on allgroups for command args
+                postGroupMessage(commandStringParts[1], commandStringParts[2], commandStringParts[3]);
+            } else if (commandStringParts[0].contains("groupusers")) {
+                requestGroupUsers(commandStringParts[1]);
+            } else if (commandStringParts[0].contains("groupmessage")) {
+                retrieveGroupMessage(commandStringParts[1], commandStringParts[2]);
+            } else if (commandStringParts[0].contains("groupjoin")) {
+                joinPrivateGroup(commandStringParts[1]);
+            } else if (commandStringParts[0].contains("groupleave")) {
+                leavePrivateGroup(commandStringParts[1]);
             } else if (commandStringParts[0].contains("help")) {
                 printCommandList();
+            } else if (commandStringParts[0].contains("exit")) {
+                disconnect();
             } else {
                 System.out.println(String.format(
                         "Your command: %s, does not match any valid commands. Please enter a valid one:",
@@ -103,6 +114,75 @@ public final class ProgrammingAssignment2Client {
             }
         } else {
             System.out.println("Commands must start with a /");
+        }
+    }
+
+    private static void postGroupMessage(String subject, String body,
+            String groupString) throws IOException {
+        // TODO: need validation to make sure groupsting is in the groups list
+        if (isConnected) {
+            String[] valueStrings = { subject, body, Integer.toString(socketControls.userID), groupString };
+            socketControls.writeToSocket("grouppost", valueStrings);
+        } else {
+            notConnectedMessage();
+        }
+    }
+
+    private static void retrieveGroupMessage(String messageID, String groupString) {
+        if (isConnected) {
+
+            String[] valueStrings = { String.valueOf(messageID), groupString };
+            try {
+                socketControls.writeToSocket("groupmessage", valueStrings);
+            } catch (IOException e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            }
+        } else {
+            notConnectedMessage();
+        }
+    }
+
+    private static void joinPrivateGroup(String groupString) {
+        if (isConnected) {
+            String[] valueStrings = { groupString };
+            try {
+                socketControls.writeToSocket("groupjoin", valueStrings);
+            } catch (IOException e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            }
+        } else {
+            notConnectedMessage();
+        }
+    }
+
+    private static void requestGroupUsers(String groupString) {
+        if (isConnected) {
+
+            String[] valueStrings = { groupString };
+            try {
+                socketControls.writeToSocket("groupusers", valueStrings);
+            } catch (IOException e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            }
+        } else {
+            notConnectedMessage();
+        }
+    }
+
+    private static void leavePrivateGroup(String groupString) {
+        if (isConnected) {
+            String[] valueStrings = { groupString };
+            try {
+                socketControls.writeToSocket("groupleave", valueStrings);
+            } catch (IOException e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            }
+        } else {
+            notConnectedMessage();
         }
     }
 
@@ -124,6 +204,11 @@ public final class ProgrammingAssignment2Client {
         System.out.println("/groups\n");
         System.out.println("/message {Message ID}\n");
         System.out.println("/leave\n");
+        System.out.println("/grouppost {Subject} {Body} {GroupID or Group name} \n");
+        System.out.println("/groupusers {GroupID or Group name}\n");
+        System.out.println("/groupmessage {Message ID} {GroupID or Group name}\n");
+        System.out.println("/groupjoin {GroupID or Group name}\n");
+        System.out.println("/groupleave {GroupID or Group name}\n");
         System.out.println("/exit\n");
         System.out.println("Or type /help to see these commands again\n");
     }
@@ -158,7 +243,7 @@ public final class ProgrammingAssignment2Client {
 
     private static void requestUserList() {
         if (isConnected) {
-            String[] valueStrings = {Integer.toString(socketControls.userID)};
+            String[] valueStrings = { Integer.toString(socketControls.userID) };
             try {
                 socketControls.writeToSocket("users", valueStrings);
             } catch (IOException e) {
@@ -188,7 +273,7 @@ public final class ProgrammingAssignment2Client {
     private static void joinGroup(String groupString) {
         // TODO: Need to do some group validation
         if (isConnected) {
-            String[] valueStrings = { Integer.toString(socketControls.userID), groupString, groupString};
+            String[] valueStrings = { Integer.toString(socketControls.userID), groupString, groupString };
             try {
                 socketControls.writeToSocket("join", valueStrings);
             } catch (IOException e) {
