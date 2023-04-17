@@ -137,7 +137,6 @@ public final class ProgrammingAssignment2Client {
 
     private static void postGroupMessage(String subject, String body,
             String groupString) throws IOException {
-        // TODO: need validation to make sure groupstring is in the groups list
         if (isConnected) {
             String[] valueStrings = { subject, body, Integer.toString(socketControls.userID), groupString };
             socketControls.writeToSocket("grouppost", valueStrings);
@@ -360,7 +359,7 @@ final class SocketReaderThread extends Thread {
 
     @Override
     public void run() {
-        while (socketConnection.isConnected()) {
+        while (!socketConnection.isClosed()) {
             try {
                 is = this.socketConnection.getInputStream();
                 controlWriter = new DataOutputStream(this.socketConnection.getOutputStream());
@@ -505,11 +504,6 @@ final class SocketControls {
         groupMap.put("Group3", (String) valueJson.get("Group3"));
         groupMap.put("Group4", (String) valueJson.get("Group4"));
         groupMap.put("Group5", (String) valueJson.get("Group5"));
-
-        // TODO: Use this for validation check
-        groupMap.forEach((k, v) -> {
-            System.out.println(k + " " + v);
-        });
 
         Thread socketThread = new Thread(new SocketReaderThread(controlSocket));
 
