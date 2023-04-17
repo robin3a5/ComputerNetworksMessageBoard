@@ -34,7 +34,7 @@ def handle_connect(args, client_socket):
         clientBytes = json.dumps(errorResponse).encode()
         byte_obj_with_newline = bytes(clientBytes + b"\n")
         client_socket.send(byte_obj_with_newline)
-    else:    
+    else:   
         UserList.append(args_list[0])
         UserDict[str(ID)] = args_list[0]
         #send response to client
@@ -44,7 +44,7 @@ def handle_connect(args, client_socket):
         byte_obj_with_newline = bytes(clientBytes + b"\n")
         client_socket.send(byte_obj_with_newline)
         UserGroups[ID] = []
-        handle_join(ID, client_socket)
+        autoJoin(ID, client_socket)
         ID += 1
 
 
@@ -74,7 +74,7 @@ def handle_groupPost(args, client_socket):
     byte_obj_with_newline = bytes(response_bytes + b"\n")
     for socket in ClientList:
         userId = ClientList[socket]  
-        if groupID in UserGroups[userId]:
+        if groupID in UserGroups[int(userId)]:
             socket.send(byte_obj_with_newline)    
 
 
@@ -107,7 +107,6 @@ def handle_message(args, client_socket):
     global MessageDict
     args_list = list(args)
     messageID = int(args_list[0])
-    groupID = str(args_list[1])
     responseMessage = ""
     for message in MessageDict["Public"]:
         messageKey = list(message.keys())[0]
@@ -136,25 +135,42 @@ def handle_groupMessage(args, client_socket):
     client_socket.send(byte_obj_with_newline)
 
     
-def handle_join(userId, client_socket):
+def handle_join(args, client_socket):
     global GROUPS
     global UserGroups
     global ClientList
     args_list = list(args)
+    userId = args_list[0]
     userName = UserDict[str(userId)]
-    UserGroups[userId].append("Public")
+    UserGroups[int(userId)].append("Public")
     response = {'success': True, 'command': "join", 'value': {'message': "Joined public group"}}
     response_bytes = json.dumps(response).encode()
     byte_obj_with_newline = bytes(response_bytes + b"\n")
     client_socket.send(byte_obj_with_newline)
-    for socket, user in ClientList:
+    for socket, user in ClientList.items():
         if socket != client_socket:
             response = {'success': True, 'command': "join", 'value': {'message': userName + " has joined the board"}}
             response_bytes = json.dumps(response).encode()
             byte_obj_with_newline = bytes(response_bytes + b"\n")
             socket.send(byte_obj_with_newline)
 
-
+def autoJoin(userId, client_socket):
+    global GROUPS
+    global UserGroups
+    global ClientList
+    userName = UserDict[str(userId)]
+    UserGroups[int(userId)].append("Public")
+    response = {'success': True, 'command': "join", 'value': {'message': "Joined public group"}}
+    response_bytes = json.dumps(response).encode()
+    byte_obj_with_newline = bytes(response_bytes + b"\n")
+    client_socket.send(byte_obj_with_newline)
+    for socket, user in ClientList.items():
+        if socket != client_socket:
+            response = {'success': True, 'command': "join", 'value': {'message': userName + " has joined the board"}}
+            response_bytes = json.dumps(response).encode()
+            byte_obj_with_newline = bytes(response_bytes + b"\n")
+            socket.send(byte_obj_with_newline)
+            
 def handle_groupJoin(args, client_socket):
     global GROUPS
     global UserGroups
@@ -166,7 +182,7 @@ def handle_groupJoin(args, client_socket):
     userName = UserDict[str(userId)]
     usersInGroup = []
     if groupId in GROUPS:
-        UserGroups[userId].append(groupId)
+        UserGroups[int(userId)].append(groupId)
         response = {'success': True, 'command': "join", 'value': {'message': "Joined group '" + groupId + "'"}}
         response_bytes = json.dumps(response).encode()
         byte_obj_with_newline = bytes(response_bytes + b"\n")
@@ -174,7 +190,7 @@ def handle_groupJoin(args, client_socket):
         for userKey, userGroupList in UserGroups.items():
             if groupId in userGroupList:
                 usersInGroup.append(userKey)
-        for socket, user in ClientList:
+        for socket, user in ClientList.items():
             if user in usersInGroup and socket != client_socket:
                 response = {'success': True, 'command': "join", 'value': {'message': userName + " joined the group"}}
                 response_bytes = json.dumps(response).encode()
@@ -182,7 +198,7 @@ def handle_groupJoin(args, client_socket):
                 socket.send(byte_obj_with_newline)
     elif groupName in GROUPS.values():
         groupId = tuple([key for key, value in GROUPS.items() if value == groupName])
-        UserGroups[userId].append(groupId)
+        UserGroups[int(userId)].append(groupId)
         response = {'success': True, 'command': "join", 'value': {'message': "Joined group '" + groupId + "'"}}
         response_bytes = json.dumps(response).encode()
         byte_obj_with_newline = bytes(response_bytes + b"\n")
@@ -190,7 +206,7 @@ def handle_groupJoin(args, client_socket):
         for userKey, userGroupList in UserGroups.items():
             if groupId in userGroupList:
                 usersInGroup.append(userKey)
-        for socket, user in ClientList:
+        for socket, user in ClientList.items():
             if user in usersInGroup and socket != client_socket:
                 response = {'success': True, 'command': "join", 'value': {'message': userName + " joined the group"}}
                 response_bytes = json.dumps(response).encode()
@@ -207,14 +223,12 @@ def handle_leave(args, client_socket):
     global UserGroups
     args_list = list(args)
     userId = args_list[0]
-    UserGroups[userId].remove("Public")
+    UserGroups[int(userId)].remove("Public")
     response = {'success': True, 'command': "leave", 'value': {'message': "Left the board"}}
     response_bytes = json.dumps(response).encode()
     byte_obj_with_newline = bytes(response_bytes + b"\n")
     client_socket.send(byte_obj_with_newline)
     ClientList.pop(client_socket)
-    client_socket.close()
-    handle_exit(userId)
     
 def handle_groupLeave(args, client_socket):
     global GROUPS
@@ -227,7 +241,7 @@ def handle_groupLeave(args, client_socket):
     userName = UserDict[str(userId)]
     usersInGroup = []
     if groupId in GROUPS:
-        UserGroups[userId].remove(groupId)
+        UserGroups[int(userId)].remove(groupId)
         response = {'success': True, 'command': "leave", 'value': {'message': "Left group '" + groupId + "'"}}
         response_bytes = json.dumps(response).encode()
         byte_obj_with_newline = bytes(response_bytes + b"\n")
@@ -235,7 +249,7 @@ def handle_groupLeave(args, client_socket):
         for userKey, userGroupList in UserGroups.items():
             if groupId in userGroupList:
                 usersInGroup.append(userKey)
-        for socket, user in ClientList:
+        for socket, user in ClientList.items():
             if user in usersInGroup and socket != client_socket:
                 response = {'success': True, 'command': "leave", 'value': {'message': userName + " left the group"}}
                 response_bytes = json.dumps(response).encode()
@@ -243,7 +257,7 @@ def handle_groupLeave(args, client_socket):
                 socket.send(byte_obj_with_newline)
     elif groupName in GROUPS.values():
         groupId = tuple([key for key, value in GROUPS.items() if value == groupName])
-        UserGroups[userId].remove(groupId)
+        UserGroups[int(userId)].remove(groupId)
         response = {'success': True, 'command': "leave", 'value': {'message': "Left group '" + groupId + "'"}}
         response_bytes = json.dumps(response).encode()
         byte_obj_with_newline = bytes(response_bytes + b"\n")
@@ -251,7 +265,7 @@ def handle_groupLeave(args, client_socket):
         for userKey, userGroupList in UserGroups.items():
             if groupId in userGroupList:
                 usersInGroup.append(userKey)
-        for socket, user in ClientList:
+        for socket, user in ClientList.items():
             if user in usersInGroup and socket != client_socket:
                 response = {'success': True, 'command': "leave", 'value': {'message': userName + " left the group"}}
                 response_bytes = json.dumps(response).encode()
