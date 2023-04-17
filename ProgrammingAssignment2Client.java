@@ -64,6 +64,38 @@ public final class ProgrammingAssignment2Client {
                                 commandStringParts[1]));
                     }
                 }
+            } else if (commandStringParts[0].contains("groups")) {
+                requestGroupList();
+            } else if (commandStringParts[0].contains("grouppost")) {
+                if (validateGroup(commandStringParts[3])) {
+                    postGroupMessage(commandStringParts[1], commandStringParts[2], commandStringParts[3]);
+                } else {
+                    groupErrorMessage(commandStringParts[3]);
+                }
+            } else if (commandStringParts[0].contains("groupusers")) {
+                if (validateGroup(commandStringParts[1])) {
+                    requestGroupUsers(commandStringParts[1]);
+                } else {
+                    groupErrorMessage(commandStringParts[1]);
+                }
+            } else if (commandStringParts[0].contains("groupmessage")) {
+                if (validateGroup(commandStringParts[2])) {
+                    retrieveGroupMessage(commandStringParts[1], commandStringParts[2]);
+                } else {
+                    groupErrorMessage(commandStringParts[2]);
+                }
+            } else if (commandStringParts[0].contains("groupjoin")) {
+                if (validateGroup(commandStringParts[1])) {
+                    joinPrivateGroup(commandStringParts[1]);
+                } else {
+                    groupErrorMessage(commandStringParts[1]);
+                }
+            } else if (commandStringParts[0].contains("groupleave")) {
+                if (validateGroup(commandStringParts[1])) {
+                    leavePrivateGroup(commandStringParts[1]);
+                } else {
+                    groupErrorMessage(commandStringParts[1]);
+                }
             } else if (commandStringParts[0].contains("join")) {
                 joinGroup();
             } else if (commandStringParts[0].contains("post")) {
@@ -72,10 +104,6 @@ public final class ProgrammingAssignment2Client {
                 } else {
                     postMessage(commandStringParts[1], commandStringParts[2]);
                 }
-            } else if (commandStringParts[0].contains("users")) {
-                requestUserList();
-            } else if (commandStringParts[0].contains("groups")) {
-                requestGroupList();
             } else if (commandStringParts[0].contains("message")) {
                 if (commandStringParts.length < 2) {
                     tooFewArguementsMessage();
@@ -89,21 +117,12 @@ public final class ProgrammingAssignment2Client {
                                 commandStringParts[1]));
                     }
                 }
-            } else if (commandStringParts[0].contains("leave")) {
-                leaveGroup();
-            } else if (commandStringParts[0].contains("grouppost")) {
-                // TODO: need validation on allgroups for command args
-                postGroupMessage(commandStringParts[1], commandStringParts[2], commandStringParts[3]);
-            } else if (commandStringParts[0].contains("groupusers")) {
-                requestGroupUsers(commandStringParts[1]);
-            } else if (commandStringParts[0].contains("groupmessage")) {
-                retrieveGroupMessage(commandStringParts[1], commandStringParts[2]);
-            } else if (commandStringParts[0].contains("groupjoin")) {
-                joinPrivateGroup(commandStringParts[1]);
-            } else if (commandStringParts[0].contains("groupleave")) {
-                leavePrivateGroup(commandStringParts[1]);
+            } else if (commandStringParts[0].contains("users")) {
+                requestUserList();
             } else if (commandStringParts[0].contains("help")) {
                 printCommandList();
+            } else if (commandStringParts[0].contains("leave")) {
+                leaveGroup();
             } else if (commandStringParts[0].contains("exit")) {
                 disconnect();
             } else {
@@ -269,7 +288,6 @@ public final class ProgrammingAssignment2Client {
     }
 
     private static void joinGroup() {
-        // TODO: Need to do some group validation
         if (isConnected) {
             String[] valueStrings = { Integer.toString(socketControls.userID) };
             try {
@@ -319,6 +337,15 @@ public final class ProgrammingAssignment2Client {
                 "Command executed with too few arguments. Please try again with the correct arguments.");
     }
 
+    private static void groupErrorMessage(String groupString) {
+        System.out.println("Your entered group: " + groupString
+                + "does not correspond to a recognized group please enter a valid one");
+    }
+
+    private static boolean validateGroup(String groupString) {
+        return socketControls.groupMap.containsKey(groupString)
+                || socketControls.groupMap.containsValue(groupString);
+    }
 }
 
 final class SocketReaderThread extends Thread {
@@ -434,7 +461,7 @@ final class SocketControls {
     DataOutputStream controlWriter = null;
     InputStream is;
     int userID = 999;
-    static Map<String, String> groupMap = new HashMap<>();
+    Map<String, String> groupMap = new HashMap<>();
 
     public void createSocketConnection(String address, int portNumber, String username)
             throws UnknownHostException, IOException {
