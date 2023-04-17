@@ -139,6 +139,7 @@ def handle_groupMessage(args, client_socket):
 def handle_join(userId, client_socket):
     global GROUPS
     global UserGroups
+    global ClientList
     args_list = list(args)
     userName = UserDict[str(userId)]
     UserGroups[userId].append("Public")
@@ -146,7 +147,7 @@ def handle_join(userId, client_socket):
     response_bytes = json.dumps(response).encode()
     byte_obj_with_newline = bytes(response_bytes + b"\n")
     client_socket.send(byte_obj_with_newline)
-    for socket, user in ClientSockets:
+    for socket, user in ClientList:
         if socket != client_socket:
             response = {'success': True, 'command': "join", 'value': {'message': userName + " has joined the board"}}
             response_bytes = json.dumps(response).encode()
@@ -157,6 +158,7 @@ def handle_join(userId, client_socket):
 def handle_groupJoin(args, client_socket):
     global GROUPS
     global UserGroups
+    global ClientList
     args_list = list(args)
     userId = int(args_list[0])
     groupId = str(args_list[1])
@@ -172,7 +174,7 @@ def handle_groupJoin(args, client_socket):
         for userKey, userGroupList in UserGroups.items():
             if groupId in userGroupList:
                 usersInGroup.append(userKey)
-        for socket, user in ClientSockets:
+        for socket, user in ClientList:
             if user in usersInGroup and socket != client_socket:
                 response = {'success': True, 'command': "join", 'value': {'message': userName + " joined the group"}}
                 response_bytes = json.dumps(response).encode()
@@ -188,7 +190,7 @@ def handle_groupJoin(args, client_socket):
         for userKey, userGroupList in UserGroups.items():
             if groupId in userGroupList:
                 usersInGroup.append(userKey)
-        for socket, user in ClientSockets:
+        for socket, user in ClientList:
             if user in usersInGroup and socket != client_socket:
                 response = {'success': True, 'command': "join", 'value': {'message': userName + " joined the group"}}
                 response_bytes = json.dumps(response).encode()
@@ -217,6 +219,7 @@ def handle_leave(args, client_socket):
 def handle_groupLeave(args, client_socket):
     global GROUPS
     global UserGroups
+    global ClientList
     args_list = list(args)
     userId = args_list[0]
     groupId = args_list[1]
@@ -232,7 +235,7 @@ def handle_groupLeave(args, client_socket):
         for userKey, userGroupList in UserGroups.items():
             if groupId in userGroupList:
                 usersInGroup.append(userKey)
-        for socket, user in ClientSockets:
+        for socket, user in ClientList:
             if user in usersInGroup and socket != client_socket:
                 response = {'success': True, 'command': "leave", 'value': {'message': userName + " left the group"}}
                 response_bytes = json.dumps(response).encode()
@@ -248,7 +251,7 @@ def handle_groupLeave(args, client_socket):
         for userKey, userGroupList in UserGroups.items():
             if groupId in userGroupList:
                 usersInGroup.append(userKey)
-        for socket, user in ClientSockets:
+        for socket, user in ClientList:
             if user in usersInGroup and socket != client_socket:
                 response = {'success': True, 'command': "leave", 'value': {'message': userName + " left the group"}}
                 response_bytes = json.dumps(response).encode()
