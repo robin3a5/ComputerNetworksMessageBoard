@@ -152,7 +152,6 @@ public final class ProgrammingAssignment2Client {
             try {
                 socketControls.writeToSocket("groupmessage", valueStrings);
             } catch (IOException e) {
-                // TODO Auto-generated catch block
                 e.printStackTrace();
             }
         } else {
@@ -166,7 +165,6 @@ public final class ProgrammingAssignment2Client {
             try {
                 socketControls.writeToSocket("groupjoin", valueStrings);
             } catch (IOException e) {
-                // TODO Auto-generated catch block
                 e.printStackTrace();
             }
         } else {
@@ -181,7 +179,6 @@ public final class ProgrammingAssignment2Client {
             try {
                 socketControls.writeToSocket("groupusers", valueStrings);
             } catch (IOException e) {
-                // TODO Auto-generated catch block
                 e.printStackTrace();
             }
         } else {
@@ -195,7 +192,6 @@ public final class ProgrammingAssignment2Client {
             try {
                 socketControls.writeToSocket("groupleave", valueStrings);
             } catch (IOException e) {
-                // TODO Auto-generated catch block
                 e.printStackTrace();
             }
         } else {
@@ -249,7 +245,7 @@ public final class ProgrammingAssignment2Client {
             try {
                 socketControls.writeToSocket("leave", valueStrings);
             } catch (IOException e) {
-                // TODO Auto-generated catch block
+
                 e.printStackTrace();
             }
         } else {
@@ -263,7 +259,7 @@ public final class ProgrammingAssignment2Client {
             try {
                 socketControls.writeToSocket("users", valueStrings);
             } catch (IOException e) {
-                // TODO Auto-generated catch block
+
                 e.printStackTrace();
             }
         } else {
@@ -278,7 +274,7 @@ public final class ProgrammingAssignment2Client {
             try {
                 socketControls.writeToSocket("groups", valueStrings);
             } catch (IOException e) {
-                // TODO Auto-generated catch block
+
                 e.printStackTrace();
             }
         } else {
@@ -292,7 +288,7 @@ public final class ProgrammingAssignment2Client {
             try {
                 socketControls.writeToSocket("join", valueStrings);
             } catch (IOException e) {
-                // TODO Auto-generated catch block
+
                 e.printStackTrace();
             }
         } else {
@@ -305,21 +301,39 @@ public final class ProgrammingAssignment2Client {
             System.out.println("Please input a username:");
             String username = reader.nextLine();
             socketControls.createSocketConnection(ipAddr, portNumber, username);
-            isConnected = true;
+            while (!isConnected) {
+                if (socketControls.readSocketResponse()) {
+                    isConnected = true;
+                } else {
+                    retryUsernameConnection();
+                }
+            }
 
         } else {
-            System.out.println("You're already connected!\n");
+            System.out.println("You're already connected!");
+            System.out.println("Enter a command: ");
+
         }
+    }
+
+    private static void retryUsernameConnection() {
+        System.out.println("Sorry username was taken! Please enter another!");
+        String username = reader.nextLine();
+        try {
+            String[] valueStrings = { username };
+            socketControls.writeToSocket("connect", valueStrings);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
     }
 
     private static void retrieveMessage(int messageID) {
         if (isConnected) {
-
             String[] valueStrings = { String.valueOf(messageID) };
             try {
                 socketControls.writeToSocket("message", valueStrings);
             } catch (IOException e) {
-                // TODO Auto-generated catch block
                 e.printStackTrace();
             }
         } else {
@@ -377,14 +391,10 @@ final class SocketReaderThread extends Thread {
     public void readSocketResponse() throws IOException {
         String requestLine = controlReader.readLine();
         JSONObject newObject = new JSONObject(requestLine);
-        System.out.println(newObject);
         String commandString = (String) newObject.get("command");
-        System.out.println(newObject);
         if ((boolean) newObject.get("success")) {
-            System.out.println("Value worked for test");
             // Now check value
             Object valueObject = newObject.get("value");
-            System.out.println(valueObject.toString());
             // Now have object containing value
             if (commandString.equals("users")) {
                 handleUsersResponse(valueObject);
@@ -470,7 +480,6 @@ final class SocketControls {
         controlReader = new BufferedReader(new InputStreamReader(is));
         String[] valueStrings = { username };
         writeToSocket("connect", valueStrings);
-        readSocketResponse();
     }
 
     public void writeToSocket(String commandString, String[] valueStrings) throws IOException {
@@ -478,20 +487,19 @@ final class SocketControls {
         json.put("value", valueStrings);
         json.put("command", commandString);
         controlWriter.writeUTF(json.toString());
-        System.out.println(json.toString());
+        // System.out.println(json.toString());
     }
 
-    public void readSocketResponse() throws IOException {
+    public boolean readSocketResponse() throws IOException {
         String requestLine = controlReader.readLine();
         JSONObject newObject = new JSONObject(requestLine);
-        System.out.println(newObject);
         if ((boolean) newObject.get("success")) {
             Object valueObject = newObject.get("value");
             // Now have object containing value
             handleConnectResponse(valueObject);
+            return true;
         } else {
-            System.out.println("Sorry username was taken! Please try another!");
-            // TODO: need to prompt for new username entry
+            return false;
         }
 
     }
