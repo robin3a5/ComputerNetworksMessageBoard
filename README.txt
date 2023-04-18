@@ -1,0 +1,1 @@
+To run the server, navigate to the dist subdirectory and run the file 'Proj2Server.exe'.
