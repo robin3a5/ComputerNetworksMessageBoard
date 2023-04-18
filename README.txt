@@ -1,3 +1,4 @@
+Alexander Robinson and Connor Hyde
 Server instructions:
 
 	To run the server, you'll need to have python installed. If you don't already, navigate to https://www.python.org/downloads/ and download/install the latest version.
