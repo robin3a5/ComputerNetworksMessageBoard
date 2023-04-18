@@ -52,8 +52,8 @@ def handle_post(args, client_socket):
     global MessageDict
     global ClientList
     args_list = list(args)
-    response = {'success': True, 'command': "post", 'value': {'MessageID': str(MessageID), 'Sender': str(UserDict[args_list[2]]), 'Date': str(datetime.now()), 'Subject': str(args_list[1])}}
-    MessageDict["Public"].append({MessageID : str(args_list[0])})    
+    response = {'success': True, 'command': "post", 'value': {'MessageID': str(MessageID), 'Sender': str(UserDict[args_list[2]]), 'Date': str(datetime.now()), 'Subject': str(args_list[0])}}
+    MessageDict["Public"].append({MessageID : str(args_list[1]), 'Sender': str(UserDict[args_list[2]]), 'Date': str(datetime.now()), 'Subject': str(args_list[0])})    
     MessageID = MessageID + 1
     response_bytes = json.dumps(response).encode()
     byte_obj_with_newline = bytes(response_bytes + b"\n")
@@ -66,8 +66,8 @@ def handle_groupPost(args, client_socket):
     global ClientList
     args_list = list(args)
     groupID = args_list[3]
-    response = {'success': True, 'command': "post", 'value': {'MessageID': str(MessageID), 'Sender': str(UserDict[args_list[2]]), 'Date': str(datetime.now()), 'Subject': str(args_list[1])}}
-    MessageDict[groupID].append({MessageID : str(args_list[0])})
+    response = {'success': True, 'command': "post", 'value': {'MessageID': str(MessageID), 'Sender': str(UserDict[args_list[2]]), 'Date': str(datetime.now()), 'Subject': str(args_list[0])}}
+    MessageDict[groupID].append({MessageID : str(args_list[1]), 'Sender': str(UserDict[args_list[2]]), 'Date': str(datetime.now()), 'Subject': str(args_list[0])})    
     MessageID += 1
     response_bytes = json.dumps(response).encode()
     byte_obj_with_newline = bytes(response_bytes + b"\n")
@@ -136,6 +136,7 @@ def handle_join(args, client_socket):
     global UserGroups
     global ClientList
     global UserList
+    global MessageDict
     args_list = list(args)
     userId = args_list[0]
     userName = UserDict[str(userId)]
@@ -151,7 +152,8 @@ def handle_join(args, client_socket):
             response_bytes = json.dumps(response).encode()
             byte_obj_with_newline = bytes(response_bytes + b"\n")
             socket.send(byte_obj_with_newline)
-    
+    sendLastTwoMessages("Public", client_socket)
+
 
 def autoJoin(userId, client_socket):
     # send last 2 messages
@@ -173,7 +175,8 @@ def autoJoin(userId, client_socket):
             response_bytes = json.dumps(response).encode()
             byte_obj_with_newline = bytes(response_bytes + b"\n")
             socket.send(byte_obj_with_newline)
-            
+    sendLastTwoMessages("Public", client_socket)
+         
 def handle_groupJoin(args, client_socket):
     # send last 2 messages
     global GROUPS
@@ -200,6 +203,7 @@ def handle_groupJoin(args, client_socket):
                 response_bytes = json.dumps(response).encode()
                 byte_obj_with_newline = bytes(response_bytes + b"\n")
                 socket.send(byte_obj_with_newline)
+        sendLastTwoMessages(groupId, client_socket)
     elif groupName in GROUPS.values():
         groupId = tuple([key for key, value in GROUPS.items() if value == groupName])
         UserGroups[int(userId)].append(groupId)
@@ -216,8 +220,18 @@ def handle_groupJoin(args, client_socket):
                 response_bytes = json.dumps(response).encode()
                 byte_obj_with_newline = bytes(response_bytes + b"\n")
                 socket.send(byte_obj_with_newline)
+        sendLastTwoMessages(groupId, client_socket)
     else:
         response = {'success': False, 'command': "join", 'value': {'message': "Specified group does not exist"}}
+        response_bytes = json.dumps(response).encode()
+        byte_obj_with_newline = bytes(response_bytes + b"\n")
+        client_socket.send(byte_obj_with_newline)
+
+def sendLastTwoMessages(groupId, client_socket):
+    lastTwoMessages = MessageDict[groupId][-2:]
+    for message in lastTwoMessages:
+        messageKey = list(message.keys())[0]
+        response = {'success': True, 'command': "post", 'value': {'MessageID': message[messageKey], 'Sender': message['Sender'], 'Date': message['Date'], 'Subject': message['Subject']}}
         response_bytes = json.dumps(response).encode()
         byte_obj_with_newline = bytes(response_bytes + b"\n")
         client_socket.send(byte_obj_with_newline)
