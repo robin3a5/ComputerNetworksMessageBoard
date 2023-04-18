@@ -41,6 +41,15 @@ public final class ProgrammingAssignment2Client {
         }
     }
 
+    /**
+     * Parses a command string and executes the corresponding command.
+     *
+     * @param commandString The command string to parse.
+     * @throws UnknownHostException If the IP address of the board cannot be
+     *                              resolved.
+     * @throws IOException          If an I/O error occurs while communicating with
+     *                              the board.
+     */
     public static void parseCommand(String commandString) throws UnknownHostException, IOException {
         if (commandString.length() == 0) {
             System.out.println("Please enter a valid command!");
@@ -189,6 +198,13 @@ public final class ProgrammingAssignment2Client {
         }
     }
 
+    /**
+     * Joins a private group.
+     *
+     * @param groupString The name or ID of the group to join.
+     * @throws IOException If an I/O error occurs while communicating with the
+     *                     board.
+     */
     private static void joinPrivateGroup(String groupString) {
         if (isConnected) {
             String[] valueStrings = { Integer.toString(socketControls.userID), groupString, groupString };
@@ -202,6 +218,13 @@ public final class ProgrammingAssignment2Client {
         }
     }
 
+    /**
+     * Requests a list of users in a group.
+     *
+     * @param groupString The name or ID of the group to request users for.
+     * @throws IOException If an I/O error occurs while communicating with the
+     *                     board.
+     */
     private static void requestGroupUsers(String groupString) {
         if (isConnected) {
 
@@ -216,6 +239,13 @@ public final class ProgrammingAssignment2Client {
         }
     }
 
+    /**
+     * Leaves a private group.
+     *
+     * @param groupString The name or ID of the group to leave.
+     * @throws IOException If an I/O error occurs while communicating with the
+     *                     board.
+     */
     private static void leavePrivateGroup(String groupString) {
         if (isConnected) {
             String[] valueStrings = { Integer.toString(socketControls.userID), groupString, groupString };
@@ -229,16 +259,28 @@ public final class ProgrammingAssignment2Client {
         }
     }
 
+    /**
+     * Validates an IP address.
+     *
+     * @param ip The IP address to validate.
+     * @return true if the IP address is valid, false otherwise.
+     */
     public static boolean validateIP(final String ip) {
         return PATTERN.matcher(ip).matches();
     }
 
+    /**
+     * Prints a welcome message to the user.
+     */
     private static void printWelcomeText() {
         System.out.println("Welcome to the connection Client!\n");
         System.out.println("You can start by running one of the commands below:");
         printCommandList();
     }
 
+    /**
+     * Prints a list of commands that the user can run.
+     */
     private static void printCommandList() {
         System.out.println("/connect\n");
         System.out.println("/join\n");
@@ -256,6 +298,14 @@ public final class ProgrammingAssignment2Client {
         System.out.println("Or type /help to see these commands again\n");
     }
 
+    /**
+     * Posts a message to the board.
+     *
+     * @param subject The subject of the message.
+     * @param body    The body of the message.
+     * @throws IOException If an I/O error occurs while communicating with the
+     *                     board.
+     */
     private static void postMessage(String subject, String body) throws IOException {
         if (isConnected) {
             String[] valueStrings = { body, subject, Integer.toString(socketControls.userID), };
@@ -265,10 +315,16 @@ public final class ProgrammingAssignment2Client {
         }
     }
 
+    /**
+     * Disconnects from the board.
+     */
     private static void disconnect() {
         isDisconnected = true;
     }
 
+    /**
+     * Leaves the public group.
+     */
     private static void leaveGroup() {
         if (isConnected) {
             String[] valueStrings = { Integer.toString(socketControls.userID) };
@@ -283,6 +339,9 @@ public final class ProgrammingAssignment2Client {
         }
     }
 
+    /**
+     * Requests a list of users from the public board.
+     */
     private static void requestUserList() {
         if (isConnected) {
             String[] valueStrings = {};
@@ -297,6 +356,9 @@ public final class ProgrammingAssignment2Client {
         }
     }
 
+    /**
+     * Prints the list of available groups.
+     */
     private static void requestGroupList() {
         if (isConnected) {
             socketControls.groupMap.forEach((k, v) -> {
@@ -307,6 +369,9 @@ public final class ProgrammingAssignment2Client {
         }
     }
 
+    /**
+     * Joins the public group.
+     */
     private static void joinGroup() {
         if (isConnected) {
             String[] valueStrings = { Integer.toString(socketControls.userID) };
@@ -321,6 +386,15 @@ public final class ProgrammingAssignment2Client {
         }
     }
 
+    /**
+     * Connects to the server and joins the public board.
+     *
+     * @param ipAddr     The IP address of the server.
+     * @param portNumber The port number of the board.
+     * @throws UnknownHostException If the IP address is not found.
+     * @throws IOException          If an I/O error occurs while connecting to the
+     *                              board.
+     */
     private static void connectToBoard(String ipAddr, int portNumber) throws UnknownHostException, IOException {
         if (!isConnected) {
             System.out.println("Please input a username:");
@@ -336,6 +410,9 @@ public final class ProgrammingAssignment2Client {
         }
     }
 
+    /**
+     * Prompts the user for a new username if the first was taken
+     */
     private static void retryUsernameConnection() {
         System.out.println("Sorry username was taken! Please enter another!");
         String username = reader.nextLine().trim();
@@ -345,9 +422,14 @@ public final class ProgrammingAssignment2Client {
         } catch (IOException e) {
             e.printStackTrace();
         }
-
     }
 
+    /**
+     * Retrieves the message with the given ID from the public board.
+     *
+     * @param messageID The ID of the message to retrieve.
+     * @throws IOException If an I/O error occurs while retrieving the message.
+     */
     private static void retrieveMessage(int messageID) {
         if (isConnected) {
             String[] valueStrings = { String.valueOf(messageID) };
@@ -361,10 +443,16 @@ public final class ProgrammingAssignment2Client {
         }
     }
 
+    /**
+     * Prints a message that the board is not connected.
+     */
     private static void notConnectedMessage() {
         System.out.println("You must first connect to a board to use this command!");
     }
 
+    /**
+     * Prints a message prompting the user to enter a command.
+     */
     private static void enterCommandMessage() {
         System.out.println("Enter a command: ");
     }
