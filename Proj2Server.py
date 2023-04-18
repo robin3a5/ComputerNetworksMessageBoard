@@ -235,7 +235,7 @@ def sendLastTwoMessages(groupId, client_socket):
     lastTwoMessages = MessageDict[groupId][-2:]
     for message in lastTwoMessages:
         messageKey = list(message.keys())[0]
-        response = {'success': True, 'command': "post", 'value': {'MessageID': messageKey, 'Sender': message['Sender'], 'Date': message['Date'], 'Subject': message['Subject']}}
+        response = {'success': True, 'command': "post", 'value': {'MessageID': str(messageKey), 'Sender': message['Sender'], 'Date': message['Date'], 'Subject': message['Subject']}}
         response_bytes = json.dumps(response).encode()
         byte_obj_with_newline = bytes(response_bytes + b"\n")
         client_socket.send(byte_obj_with_newline)
