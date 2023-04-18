@@ -289,14 +289,9 @@ public final class ProgrammingAssignment2Client {
 
     private static void requestGroupList() {
         if (isConnected) {
-
-            String[] valueStrings = {};
-            try {
-                socketControls.writeToSocket("groups", valueStrings);
-            } catch (IOException e) {
-
-                e.printStackTrace();
-            }
+            socketControls.groupMap.forEach((k, v) -> {
+                System.out.println(k + " " + v);
+            });
         } else {
             notConnectedMessage();
         }
@@ -371,8 +366,8 @@ public final class ProgrammingAssignment2Client {
     }
 
     private static void groupErrorMessage(String groupString) {
-        System.out.println("Your entered group: " + groupString
-                + " does not correspond to a recognized group please enter a valid one");
+        System.out.println("The group you entered, " + groupString
+                + ", does not correspond to a recognized group please enter a valid one");
     }
 
     private static boolean validateGroup(String groupString) {
@@ -537,6 +532,7 @@ final class SocketControls {
 
         // Start the thread.
         socketThread.start();
+        System.out.println("");
         System.out.println("Enter a command: ");
     }
 
