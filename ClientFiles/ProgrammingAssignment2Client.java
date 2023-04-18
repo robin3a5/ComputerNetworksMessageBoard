@@ -1,3 +1,5 @@
+package ClientFiles;
+
 import java.io.BufferedReader;
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -414,11 +416,11 @@ final class SocketReaderThread extends Thread {
 
     public void readSocketResponse() throws IOException {
         String requestLine = controlReader.readLine();
-        JSONObject newObject = new JSONObject(requestLine);
-        String commandString = (String) newObject.get("command");
-        if ((boolean) newObject.get("success")) {
+        JSONObject jsonReturn = new JSONObject(requestLine);
+        String commandString = (String) jsonReturn.get("command");
+        if ((boolean) jsonReturn.get("success")) {
             // Now check value
-            Object valueObject = newObject.get("value");
+            Object valueObject = jsonReturn.get("value");
             // Now have object containing value
             if (commandString.equals("users")) {
                 handleUsersResponse(valueObject);

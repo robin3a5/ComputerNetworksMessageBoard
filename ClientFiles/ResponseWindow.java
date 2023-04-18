@@ -1,3 +1,5 @@
+package ClientFiles;
+
 import javax.swing.*;
 
 public class ResponseWindow extends JFrame {

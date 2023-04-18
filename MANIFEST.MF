@@ -1,0 +1,2 @@
+Main-class: ClientFiles.ProgrammingAssignment2Client
+Class-Path: ClientFiles.json-20230227.jar
