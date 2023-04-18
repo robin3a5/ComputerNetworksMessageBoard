@@ -51,30 +51,47 @@ def handle_post(args, client_socket):
     global MessageID
     global MessageDict
     global ClientList
+    global UserGroups
     args_list = list(args)
-    response = {'success': True, 'command': "post", 'value': {'MessageID': str(MessageID), 'Sender': str(UserDict[args_list[2]]), 'Date': str(datetime.now()), 'Subject': str(args_list[0])}}
-    MessageDict["Public"].append({MessageID : str(args_list[1]), 'Sender': str(UserDict[args_list[2]]), 'Date': str(datetime.now()), 'Subject': str(args_list[0])})    
-    MessageID = MessageID + 1
-    response_bytes = json.dumps(response).encode()
-    byte_obj_with_newline = bytes(response_bytes + b"\n")
-    for socket in ClientList:
-        socket.send(byte_obj_with_newline)
+    if "Public" in UserGroups[int(args_list[2])]:
+        response = {'success': True, 'command': "post", 'value': {'MessageID': str(MessageID), 'Sender': str(UserDict[args_list[2]]), 'Date': str(datetime.now()), 'Subject': str(args_list[1])}}
+        MessageDict["Public"].append({MessageID : str(args_list[0]), 'Sender': str(UserDict[args_list[2]]), 'Date': str(datetime.now()), 'Subject': str(args_list[1])})    
+        MessageID = MessageID + 1
+        response_bytes = json.dumps(response).encode()
+        byte_obj_with_newline = bytes(response_bytes + b"\n")
+        for socket in ClientList:
+            socket.send(byte_obj_with_newline)
+    else:
+        response = {'success': False, 'command': "post", 'value': {'message': "Not in public group, cannot post"}}
+        response_bytes = json.dumps(response).encode()
+        byte_obj_with_newline = bytes(response_bytes + b"\n")
+        client_socket.send(byte_obj_with_newline)
 
 def handle_groupPost(args, client_socket):
     global MessageID
     global MessageDict
     global ClientList
+    global GROUPS
+    global UserGroups
     args_list = list(args)
-    groupID = args_list[3]
-    response = {'success': True, 'command': "post", 'value': {'MessageID': str(MessageID), 'Sender': str(UserDict[args_list[2]]), 'Date': str(datetime.now()), 'Subject': str(args_list[0])}}
-    MessageDict[groupID].append({MessageID : str(args_list[1]), 'Sender': str(UserDict[args_list[2]]), 'Date': str(datetime.now()), 'Subject': str(args_list[0])})    
-    MessageID += 1
-    response_bytes = json.dumps(response).encode()
-    byte_obj_with_newline = bytes(response_bytes + b"\n")
-    for socket in ClientList:
-        userId = ClientList[socket]  
-        if groupID in UserGroups[int(userId)]:
-            socket.send(byte_obj_with_newline)    
+    groupId = args_list[3]
+    if groupId in GROUPS.values():
+        groupId = tuple([key for key, value in GROUPS.items() if value == groupId])[0]
+    if groupId in GROUPS.keys() and groupId in UserGroups[int(args_list[2])]:
+        response = {'success': True, 'command': "post", 'value': {'MessageID': str(MessageID), 'Sender': str(UserDict[args_list[2]]), 'Date': str(datetime.now()), 'Subject': str(args_list[1])}}
+        MessageDict[groupId].append({MessageID : str(args_list[0]), 'Sender': str(UserDict[args_list[2]]), 'Date': str(datetime.now()), 'Subject': str(args_list[1])})    
+        MessageID += 1
+        response_bytes = json.dumps(response).encode()
+        byte_obj_with_newline = bytes(response_bytes + b"\n")
+        for socket in ClientList:
+            userId = ClientList[socket]  
+            if groupId in UserGroups[int(userId)]:
+                socket.send(byte_obj_with_newline)
+    else:
+        response = {'success': False, 'command': "post", 'value': {'message': "Cannot post to group you are not in"}}
+        response_bytes = json.dumps(response).encode()
+        byte_obj_with_newline = bytes(response_bytes + b"\n")
+        client_socket.send(byte_obj_with_newline)
 
 
 
@@ -131,8 +148,6 @@ def handle_groupMessage(args, client_socket):
 
     
 def handle_join(args, client_socket):
-    # send last 2 messages
-    global GROUPS
     global UserGroups
     global ClientList
     global UserList
@@ -140,23 +155,29 @@ def handle_join(args, client_socket):
     args_list = list(args)
     userId = args_list[0]
     userName = UserDict[str(userId)]
-    UserList.append(userName)
-    UserGroups[int(userId)].append("Public")
-    response = {'success': True, 'command': "join", 'value': {'message': "Joined public group"}}
-    response_bytes = json.dumps(response).encode()
-    byte_obj_with_newline = bytes(response_bytes + b"\n")
-    client_socket.send(byte_obj_with_newline)
-    for socket, user in ClientList.items():
-        if socket != client_socket:
-            response = {'success': True, 'command': "join", 'value': {'message': userName + " has joined the board"}}
-            response_bytes = json.dumps(response).encode()
-            byte_obj_with_newline = bytes(response_bytes + b"\n")
-            socket.send(byte_obj_with_newline)
-    sendLastTwoMessages("Public", client_socket)
+    if userName not in UserList:
+        UserList.append(userName)
+    if "Public" not in UserGroups[int(userId)]:
+        UserGroups[int(userId)].append("Public")
+        response = {'success': True, 'command': "join", 'value': {'message': "Joined public group"}}
+        response_bytes = json.dumps(response).encode()
+        byte_obj_with_newline = bytes(response_bytes + b"\n")
+        client_socket.send(byte_obj_with_newline)
+        for socket, user in ClientList.items():
+            if socket != client_socket:
+                response = {'success': True, 'command': "join", 'value': {'message': userName + " has joined the board"}}
+                response_bytes = json.dumps(response).encode()
+                byte_obj_with_newline = bytes(response_bytes + b"\n")
+                socket.send(byte_obj_with_newline)
+        sendLastTwoMessages("Public", client_socket)
+    else:
+        response = {'success': False, 'command': "join", 'value': {'message': "Already in public group"}}
+        response_bytes = json.dumps(response).encode()
+        byte_obj_with_newline = bytes(response_bytes + b"\n")
+        client_socket.send(byte_obj_with_newline)
 
 
 def autoJoin(userId, client_socket):
-    # send last 2 messages
     global GROUPS
     global UserGroups
     global ClientList
@@ -178,34 +199,17 @@ def autoJoin(userId, client_socket):
     sendLastTwoMessages("Public", client_socket)
          
 def handle_groupJoin(args, client_socket):
-    # send last 2 messages
     global GROUPS
     global UserGroups
     global ClientList
     args_list = list(args)
     userId = int(args_list[0])
     groupId = str(args_list[1])
-    groupName = str(args_list[2])
     userName = UserDict[str(userId)]
     usersInGroup = []
-    if groupId in GROUPS:
-        UserGroups[int(userId)].append(groupId)
-        response = {'success': True, 'command': "join", 'value': {'message': "Joined group '" + groupId + "'"}}
-        response_bytes = json.dumps(response).encode()
-        byte_obj_with_newline = bytes(response_bytes + b"\n")
-        client_socket.send(byte_obj_with_newline)
-        for userKey, userGroupList in UserGroups.items():
-            if groupId in userGroupList:
-                usersInGroup.append(userKey)
-        for socket, user in ClientList.items():
-            if user in usersInGroup and socket != client_socket:
-                response = {'success': True, 'command': "join", 'value': {'message': userName + " joined the group"}}
-                response_bytes = json.dumps(response).encode()
-                byte_obj_with_newline = bytes(response_bytes + b"\n")
-                socket.send(byte_obj_with_newline)
-        sendLastTwoMessages(groupId, client_socket)
-    elif groupName in GROUPS.values():
-        groupId = tuple([key for key, value in GROUPS.items() if value == groupName])
+    if groupId in GROUPS.values():
+        groupId = tuple([key for key, value in GROUPS.items() if value == groupId])[0]
+    if groupId in GROUPS and groupId not in UserGroups[int(userId)]:
         UserGroups[int(userId)].append(groupId)
         response = {'success': True, 'command': "join", 'value': {'message': "Joined group '" + groupId + "'"}}
         response_bytes = json.dumps(response).encode()
@@ -222,7 +226,7 @@ def handle_groupJoin(args, client_socket):
                 socket.send(byte_obj_with_newline)
         sendLastTwoMessages(groupId, client_socket)
     else:
-        response = {'success': False, 'command': "join", 'value': {'message': "Specified group does not exist"}}
+        response = {'success': False, 'command': "join", 'value': {'message': "Already in group"}}
         response_bytes = json.dumps(response).encode()
         byte_obj_with_newline = bytes(response_bytes + b"\n")
         client_socket.send(byte_obj_with_newline)
@@ -239,9 +243,15 @@ def sendLastTwoMessages(groupId, client_socket):
 def handle_leave(args, client_socket):
     global ClientList
     global UserGroups
+    global UserList
+    global UserDict
     args_list = list(args)
     userId = args_list[0]
-    UserGroups[int(userId)].remove("Public")
+    userName = UserDict[str(userId)]
+    if userName in UserList:
+        UserList.remove(userName)
+    if "Public" in UserGroups[int(userId)]:
+        UserGroups[int(userId)].remove("Public")
     response = {'success': True, 'command': "leave", 'value': {'message': "Left the board"}}
     response_bytes = json.dumps(response).encode()
     byte_obj_with_newline = bytes(response_bytes + b"\n")
@@ -297,7 +307,7 @@ def handle_groupLeave(args, client_socket):
 def sendCommand(bytes, client_socket):
     try:
         client_socket.send(bytes)
-    except ConnectionResetError:
+    except (ConnectionResetError, ConnectionAbortedError) as error:
         print("Client socket closed")
 
 
@@ -329,7 +339,8 @@ def handle_exit(userId, client_socket):
         groupLeaveArgs = [userId, group, ""]
         handle_groupLeave(groupLeaveArgs, client_socket)
     userName = UserDict.pop(str(userId))
-    UserList.remove(userName)
+    if userName in UserList:
+        UserList.remove(userName)
     response = {'success': True, 'command': "exit", 'value': {'message': "Client " + userName + " has left the board"}}
     response_bytes = json.dumps(response).encode()
     byte_obj_with_newline = bytes(response_bytes + b"\n")
@@ -358,7 +369,7 @@ def handle_client(client_socket):
                     handle_exit(jsonData, client_socket)
                     break;
                 handle_command(jsonData, client_socket)
-        except ConnectionResetError:
+        except (ConnectionResetError, ConnectionAbortedError) as error:
             userId = ClientList[client_socket]
             handle_exit(userId, client_socket)
             break
