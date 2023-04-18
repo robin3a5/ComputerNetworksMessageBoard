@@ -70,7 +70,6 @@ public final class ProgrammingAssignment2Client {
                     }
                 } else {
                     System.out.println("You're already connected!");
-                    enterCommandMessage();
                 }
             } else if (commandString.equals("/groups")) {
                 requestGroupList();
@@ -364,7 +363,6 @@ public final class ProgrammingAssignment2Client {
 
     private static void notConnectedMessage() {
         System.out.println("You must first connect to a board to use this command!");
-        enterCommandMessage();
     }
 
     private static void enterCommandMessage() {
