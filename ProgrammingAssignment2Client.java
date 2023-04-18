@@ -29,8 +29,8 @@ public final class ProgrammingAssignment2Client {
     public static void main(String argv[]) throws Exception {
         printWelcomeText();
         reader = new Scanner(System.in);
-        enterCommandMessage();
         while (!isDisconnected) {
+            enterCommandMessage();
             parseCommand(reader.nextLine().trim());
         }
         reader.close();
@@ -301,7 +301,6 @@ public final class ProgrammingAssignment2Client {
             socketControls.groupMap.forEach((k, v) -> {
                 System.out.println(k + " " + v);
             });
-            enterCommandMessage();
         } else {
             notConnectedMessage();
         }
@@ -386,6 +385,7 @@ final class SocketReaderThread extends Thread {
     BufferedReader controlReader = null;
     DataOutputStream controlWriter = null;
     InputStream is;
+    private ResponseWindow responseWindow;
 
     public SocketReaderThread(Socket socket) {
         socketConnection = socket;
@@ -397,6 +397,7 @@ final class SocketReaderThread extends Thread {
             is = this.socketConnection.getInputStream();
             controlWriter = new DataOutputStream(this.socketConnection.getOutputStream());
             controlReader = new BufferedReader(new InputStreamReader(is));
+            responseWindow = new ResponseWindow();
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -404,7 +405,6 @@ final class SocketReaderThread extends Thread {
             try {
                 while (controlReader.ready()) {
                     readSocketResponse();
-                    System.out.println("Enter a command: ");
                 }
             } catch (IOException e) {
                 e.printStackTrace();
@@ -447,22 +447,22 @@ final class SocketReaderThread extends Thread {
         // TODO: Need false condition checks on all of these
         JSONObject valueJson = new JSONObject(valueObject.toString());
         String message = (String) valueJson.get("message");
-        System.out.println(message);
+        responseWindow.updateResponse(message);
     }
 
     private void handleUsersResponse(Object valueObject) {
         JSONObject valueJson = new JSONObject(valueObject.toString());
         JSONArray jsonTest = (JSONArray) valueJson.get("users");
-        System.out.println("User List:");
+        responseWindow.updateResponse("User List:");
         jsonTest.forEach(user -> {
-            System.out.println(user.toString());
+            responseWindow.updateResponse(user.toString());
         });
     }
 
     private void handleMessageResponse(Object valueObject) {
         JSONObject valueJson = new JSONObject(valueObject.toString());
         String message = (String) valueJson.get("message");
-        System.out.println(message);
+        responseWindow.updateResponse("Message body: " + message);
     }
 
     private void handlePostResponse(Object valueObject) {
@@ -471,13 +471,14 @@ final class SocketReaderThread extends Thread {
         String sender = (String) valueJson.get("Sender");
         String date = (String) valueJson.get("Date");
         String subject = (String) valueJson.get("Subject");
-        System.out.println(date + " - " + sender + ": " + subject + " (" + messageID + ")");
+        responseWindow.updateResponse(date + " - " + sender + ": " + subject + " (" + messageID + ")");
+
     }
 
     private void handleJoinResponse(Object valueObject) {
         JSONObject valueJson = new JSONObject(valueObject.toString());
         String message = (String) valueJson.get("message");
-        System.out.println(message);
+        responseWindow.updateResponse(message);
     }
 
     private void handleExitResponse(Object valueObject) {
@@ -509,7 +510,6 @@ final class SocketControls {
         json.put("value", valueStrings);
         json.put("command", commandString);
         controlWriter.writeUTF(json.toString());
-        // System.out.println(json.toString());
     }
 
     public boolean readSocketResponse() throws IOException {
@@ -539,7 +539,6 @@ final class SocketControls {
 
         // Start the thread.
         socketThread.start();
-        System.out.println("Enter a command: ");
     }
 
     public void closeSocketConnection(Socket controlSocket) throws IOException {
