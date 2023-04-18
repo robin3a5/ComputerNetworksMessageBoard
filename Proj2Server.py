@@ -24,6 +24,7 @@ COMMAND_GROUPMESSAGE = 'groupmessage'
 COMMAND_GROUPJOIN = 'groupjoin'
 COMMAND_GROUPLEAVE = 'groupleave'
 
+# Handles the initial connection of the user, auto joins the public board
 def handle_connect(args, client_socket):
     global ID
     global ClientList
@@ -46,19 +47,21 @@ def handle_connect(args, client_socket):
         autoJoin(ID, client_socket)
         ID += 1
 
-
+# Handles message posting to public board
 def handle_post(args, client_socket):
     global MessageID
     global MessageDict
     global ClientList
     global UserGroups
     args_list = list(args)
+    # Only post the message if user is in the public group
     if "Public" in UserGroups[int(args_list[2])]:
         response = {'success': True, 'command': "post", 'value': {'MessageID': str(MessageID), 'Sender': str(UserDict[args_list[2]]), 'Date': str(datetime.now()), 'Subject': str(args_list[1])}}
         MessageDict["Public"].append({MessageID : str(args_list[0]), 'Sender': str(UserDict[args_list[2]]), 'Date': str(datetime.now()), 'Subject': str(args_list[1])})    
         MessageID = MessageID + 1
         response_bytes = json.dumps(response).encode()
         byte_obj_with_newline = bytes(response_bytes + b"\n")
+        # Send message to all connected clients
         for socket in ClientList:
             socket.send(byte_obj_with_newline)
     else:
@@ -67,6 +70,7 @@ def handle_post(args, client_socket):
         byte_obj_with_newline = bytes(response_bytes + b"\n")
         client_socket.send(byte_obj_with_newline)
 
+# Handles posting to a specific group
 def handle_groupPost(args, client_socket):
     global MessageID
     global MessageDict
@@ -75,14 +79,17 @@ def handle_groupPost(args, client_socket):
     global UserGroups
     args_list = list(args)
     groupId = args_list[3]
+    # If group name is passed in instead of group ID, get the ID
     if groupId in GROUPS.values():
         groupId = tuple([key for key, value in GROUPS.items() if value == groupId])[0]
+    # Only post if user is in the group and the group ID is valid
     if groupId in GROUPS.keys() and groupId in UserGroups[int(args_list[2])]:
         response = {'success': True, 'command': "post", 'value': {'MessageID': str(MessageID), 'Sender': str(UserDict[args_list[2]]), 'Date': str(datetime.now()), 'Subject': str(args_list[1])}}
         MessageDict[groupId].append({MessageID : str(args_list[0]), 'Sender': str(UserDict[args_list[2]]), 'Date': str(datetime.now()), 'Subject': str(args_list[1])})    
         MessageID += 1
         response_bytes = json.dumps(response).encode()
         byte_obj_with_newline = bytes(response_bytes + b"\n")
+        # Send post to all clients in the group
         for socket in ClientList:
             userId = ClientList[socket]  
             if groupId in UserGroups[int(userId)]:
@@ -94,7 +101,7 @@ def handle_groupPost(args, client_socket):
         client_socket.send(byte_obj_with_newline)
 
 
-
+# Handles user command for public group
 def handle_users(args, client_socket):
     global UserList
     response = {'success': True, 'command': "users", 'value': {'users': UserList}}
@@ -102,10 +109,12 @@ def handle_users(args, client_socket):
     byte_obj_with_newline = bytes(response_bytes + b"\n")
     client_socket.send(byte_obj_with_newline)
 
+# Handles user command for specific group
 def handle_groupUsers(args, client_socket):
     args_list = list(args)
     groupID = str(args_list[0])
     usersInGroup = []
+    # Iterates through dictionaries to fetch all users from group
     for userKey, userGroupList in UserGroups.items():
         if groupID in userGroupList:
             usersInGroup.append(UserDict[str(userKey)])
@@ -114,7 +123,7 @@ def handle_groupUsers(args, client_socket):
     byte_obj_with_newline = bytes(response_bytes + b"\n")
     client_socket.send(byte_obj_with_newline)
 
-
+# Handle public group message retrieval
 def handle_message(args, client_socket):
     global MessageDict
     args_list = list(args)
@@ -130,6 +139,7 @@ def handle_message(args, client_socket):
     byte_obj_with_newline = bytes(response_bytes + b"\n")
     client_socket.send(byte_obj_with_newline)
 
+# Handle message retrieval for specific group
 def handle_groupMessage(args, client_socket):
     global MessageDict
     args_list = list(args)
@@ -146,7 +156,7 @@ def handle_groupMessage(args, client_socket):
     byte_obj_with_newline = bytes(response_bytes + b"\n")
     client_socket.send(byte_obj_with_newline)
 
-    
+# Handle joining public group
 def handle_join(args, client_socket):
     global UserGroups
     global ClientList
@@ -155,14 +165,17 @@ def handle_join(args, client_socket):
     args_list = list(args)
     userId = args_list[0]
     userName = UserDict[str(userId)]
+    # Add user to list if not already on user list
     if userName not in UserList:
         UserList.append(userName)
+    # Make sure user is not already in public group before joining
     if "Public" not in UserGroups[int(userId)]:
         UserGroups[int(userId)].append("Public")
         response = {'success': True, 'command': "join", 'value': {'message': "Joined public group"}}
         response_bytes = json.dumps(response).encode()
         byte_obj_with_newline = bytes(response_bytes + b"\n")
         client_socket.send(byte_obj_with_newline)
+        # Send join message to all other connected clients inside of the public group
         for socket, user in ClientList.items():
             if socket != client_socket:
                 response = {'success': True, 'command': "join", 'value': {'message': userName + " has joined the board"}}
@@ -176,7 +189,7 @@ def handle_join(args, client_socket):
         byte_obj_with_newline = bytes(response_bytes + b"\n")
         client_socket.send(byte_obj_with_newline)
 
-
+# Called upon initial connection so that the user doesn't need to join
 def autoJoin(userId, client_socket):
     global GROUPS
     global UserGroups
@@ -190,6 +203,7 @@ def autoJoin(userId, client_socket):
     response_bytes = json.dumps(response).encode()
     byte_obj_with_newline = bytes(response_bytes + b"\n")
     client_socket.send(byte_obj_with_newline)
+    # Send initial join message to all currently connected clients
     for socket, user in ClientList.items():
         if socket != client_socket:
             response = {'success': True, 'command': "join", 'value': {'message': userName + " has joined the board"}}
@@ -197,7 +211,8 @@ def autoJoin(userId, client_socket):
             byte_obj_with_newline = bytes(response_bytes + b"\n")
             socket.send(byte_obj_with_newline)
     sendLastTwoMessages("Public", client_socket)
-         
+
+# Handles joining a specific group
 def handle_groupJoin(args, client_socket):
     global GROUPS
     global UserGroups
@@ -231,6 +246,7 @@ def handle_groupJoin(args, client_socket):
         byte_obj_with_newline = bytes(response_bytes + b"\n")
         client_socket.send(byte_obj_with_newline)
 
+# Handles sending previous 2 messages from group to client that just connected
 def sendLastTwoMessages(groupId, client_socket):
     lastTwoMessages = MessageDict[groupId][-2:]
     for message in lastTwoMessages:
@@ -240,6 +256,7 @@ def sendLastTwoMessages(groupId, client_socket):
         byte_obj_with_newline = bytes(response_bytes + b"\n")
         client_socket.send(byte_obj_with_newline)
 
+# Handles leaving the public group
 def handle_leave(args, client_socket):
     global ClientList
     global UserGroups
@@ -257,6 +274,7 @@ def handle_leave(args, client_socket):
     byte_obj_with_newline = bytes(response_bytes + b"\n")
     sendCommand(byte_obj_with_newline, client_socket)
 
+# Handles leaving a specific group
 def handle_groupLeave(args, client_socket):
     global GROUPS
     global UserGroups
@@ -304,13 +322,14 @@ def handle_groupLeave(args, client_socket):
         byte_obj_with_newline = bytes(response_bytes + b"\n")
         sendCommand(byte_obj_with_newline, client_socket)
 
+# Send command method verifies that socket is still open and able to receive messages
 def sendCommand(bytes, client_socket):
     try:
         client_socket.send(bytes)
     except (ConnectionResetError, ConnectionAbortedError) as error:
         print("Client socket closed")
 
-
+# Handles an input command
 def handle_command(jsonData, client_socket):
     # Parse the command into the command name and arguments
     commandType = jsonData['command']
@@ -327,7 +346,7 @@ def handle_command(jsonData, client_socket):
         byte_obj_with_newline = bytes(response_bytes + b"\n")
         client_socket.send(byte_obj_with_newline)
 
-
+# Handles exit from the board and disconnection
 def handle_exit(userId, client_socket):
     global UserDict
     global UserList
@@ -352,7 +371,7 @@ def handle_exit(userId, client_socket):
         socket.send(byte_obj_with_newline)
     UserGroups.pop(int(userId))
 
-
+# Method to handle the client once a connection is created
 def handle_client(client_socket):
     global ClientList
     while True:
@@ -376,7 +395,7 @@ def handle_client(client_socket):
     # Clean up when the client disconnects
     client_socket.close()
 
-
+# Runs the server
 def run_server():
     global MessageDict
     MessageDict["Public"] = []
@@ -399,7 +418,7 @@ def run_server():
         thread = threading.Thread(target=handle_client, args=(client_socket,))
         thread.start()
 
-    
+# Method for parsing JSON
 def remove_chars_until_brace(s):
     if isinstance(s, (bytes, bytearray)):
         s = s.decode()
