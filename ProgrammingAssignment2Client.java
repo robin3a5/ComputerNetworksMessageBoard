@@ -29,9 +29,9 @@ public final class ProgrammingAssignment2Client {
     public static void main(String argv[]) throws Exception {
         printWelcomeText();
         reader = new Scanner(System.in);
-        System.out.println("Enter a command: ");
+        enterCommandMessage();
         while (!isDisconnected) {
-            parseCommand(reader.nextLine());
+            parseCommand(reader.nextLine().trim());
         }
         reader.close();
         if (isConnected) {
@@ -40,95 +40,124 @@ public final class ProgrammingAssignment2Client {
     }
 
     public static void parseCommand(String commandString) throws UnknownHostException, IOException {
-        String[] commandStringParts = commandString.split(" ");
-        if (commandStringParts[0].length() == 0) {
+        if (commandString.length() == 0) {
             System.out.println("Please enter a valid command!");
-        } else if (commandStringParts[0].startsWith("/")) {
-            commandStringParts[0] = commandStringParts[0].toLowerCase();
-            if (commandStringParts[0].contains("connect")) {
-                if (commandStringParts.length < 3) {
-                    tooFewArguementsMessage();
-                } else {
+        } else if (commandString.startsWith("/")) {
+            commandString = commandString.toLowerCase();
+            if (commandString.equals("/connect")) {
+                if (!isConnected) {
+                    String iPString = "";
+                    String portString = "";
                     try {
-                        if (validateIP(commandStringParts[1])) {
-                            int portNumber = Integer.parseInt(commandStringParts[2]);
-                            connectToBoard(commandStringParts[1], portNumber);
+                        System.out.println("Please enter an IP address:");
+                        iPString = reader.nextLine().trim();
+                        if (validateIP(iPString.trim())) {
+                            System.out.println("Please enter a port number:");
+                            portString = reader.nextLine().trim();
+                            int portNumber = Integer.parseInt(portString.trim());
+                            connectToBoard(iPString, portNumber);
                         } else {
                             System.out.println(String.format(
                                     "Your IP address: %s, was not a valid IP. Please enter a valid one:",
-                                    commandStringParts[2]));
+                                    iPString));
                         }
                     } catch (NumberFormatException e) {
                         System.out.println(String.format(
                                 "Your port number: %s, was not a valid port number. Please enter a valid one:",
-                                commandStringParts[1]));
+                                portString));
                     }
+                } else {
+                    System.out.println("You're already connected!");
+                    enterCommandMessage();
                 }
-            } else if (commandStringParts[0].contains("groups")) {
+            } else if (commandString.equals("/groups")) {
                 requestGroupList();
-            } else if (commandStringParts[0].contains("grouppost")) {
-                if (validateGroup(commandStringParts[3])) {
-                    postGroupMessage(commandStringParts[1], commandStringParts[2], commandStringParts[3]);
+            } else if (commandString.equals("/grouppost")) {
+                System.out.println("Please enter a group name or group id:");
+                String groupString = reader.nextLine().trim();
+                if (validateGroup(groupString)) {
+                    System.out.println("Please enter a subject:");
+                    String subjectString = reader.nextLine().trim();
+                    System.out.println("Please enter a body:");
+                    String bodyString = reader.nextLine().trim();
+                    postGroupMessage(subjectString, bodyString, groupString);
                 } else {
-                    groupErrorMessage(commandStringParts[3]);
+                    groupErrorMessage(groupString);
                 }
-            } else if (commandStringParts[0].contains("groupusers")) {
-                if (validateGroup(commandStringParts[1])) {
-                    requestGroupUsers(commandStringParts[1]);
+            } else if (commandString.equals("/groupusers")) {
+                System.out.println("Please enter a group name or group id:");
+                String groupString = reader.nextLine().trim();
+                if (validateGroup(groupString)) {
+                    requestGroupUsers(groupString);
                 } else {
-                    groupErrorMessage(commandStringParts[1]);
+                    groupErrorMessage(groupString);
                 }
-            } else if (commandStringParts[0].contains("groupmessage")) {
-                if (validateGroup(commandStringParts[2])) {
-                    retrieveGroupMessage(commandStringParts[1], commandStringParts[2]);
-                } else {
-                    groupErrorMessage(commandStringParts[2]);
-                }
-            } else if (commandStringParts[0].contains("groupjoin")) {
-                if (validateGroup(commandStringParts[1])) {
-                    joinPrivateGroup(commandStringParts[1]);
-                } else {
-                    groupErrorMessage(commandStringParts[1]);
-                }
-            } else if (commandStringParts[0].contains("groupleave")) {
-                if (validateGroup(commandStringParts[1])) {
-                    leavePrivateGroup(commandStringParts[1]);
-                } else {
-                    groupErrorMessage(commandStringParts[1]);
-                }
-            } else if (commandStringParts[0].contains("join")) {
-                joinGroup();
-            } else if (commandStringParts[0].contains("post")) {
-                if (commandStringParts.length < 3) {
-                    tooFewArguementsMessage();
-                } else {
-                    postMessage(commandStringParts[1], commandStringParts[2]);
-                }
-            } else if (commandStringParts[0].contains("message")) {
-                if (commandStringParts.length < 2) {
-                    tooFewArguementsMessage();
-                } else {
+            } else if (commandString.equals("/groupmessage")) {
+                System.out.println("Please enter a group name or group id:");
+                String groupString = reader.nextLine().trim();
+                String messageIDString = "";
+                if (validateGroup(groupString)) {
+                    System.out.println("Please enter a message id:");
+                    messageIDString = reader.nextLine().trim();
                     try {
-                        int messageID = Integer.parseInt(commandStringParts[1]);
-                        retrieveMessage(messageID);
+                        int messageID = Integer.parseInt(messageIDString);
+                        retrieveGroupMessage(messageID, groupString);
                     } catch (NumberFormatException e) {
                         System.out.println(String.format(
                                 "Your message ID: %s, was not a valid ID. Please enter a valid one:",
-                                commandStringParts[1]));
+                                messageIDString));
                     }
+                } else {
+                    groupErrorMessage(groupString);
                 }
-            } else if (commandStringParts[0].contains("users")) {
+            } else if (commandString.equals("/groupjoin")) {
+                System.out.println("Please enter a group name or group id:");
+                String groupString = reader.nextLine().trim();
+                if (validateGroup(groupString)) {
+                    joinPrivateGroup(groupString);
+                } else {
+                    groupErrorMessage(groupString);
+                }
+            } else if (commandString.equals("/groupleave")) {
+                System.out.println("Please enter a group name or group id:");
+                String groupString = reader.nextLine().trim();
+                if (validateGroup(groupString)) {
+                    leavePrivateGroup(groupString);
+                } else {
+                    groupErrorMessage(groupString);
+                }
+            } else if (commandString.equals("/join")) {
+                joinGroup();
+            } else if (commandString.equals("/post")) {
+                System.out.println("Please enter a subject:");
+                String subjectString = reader.nextLine().trim();
+                System.out.println("Please enter a body:");
+                String bodyString = reader.nextLine().trim();
+                postMessage(subjectString, bodyString);
+            } else if (commandString.equals("/message")) {
+                String messageIdString = "";
+                try {
+                    System.out.println("Please enter a message id:");
+                    messageIdString = reader.nextLine().trim();
+                    int messageID = Integer.parseInt(messageIdString);
+                    retrieveMessage(messageID);
+                } catch (NumberFormatException e) {
+                    System.out.println(String.format(
+                            "Your message ID: %s, was not a valid ID. Please enter a valid one:",
+                            messageIdString));
+                }
+            } else if (commandString.equals("/users")) {
                 requestUserList();
-            } else if (commandStringParts[0].contains("help")) {
+            } else if (commandString.equals("/help")) {
                 printCommandList();
-            } else if (commandStringParts[0].contains("leave")) {
+            } else if (commandString.equals("/leave")) {
                 leaveGroup();
-            } else if (commandStringParts[0].contains("exit")) {
+            } else if (commandString.equals("/exit")) {
                 disconnect();
             } else {
                 System.out.println(String.format(
                         "Your command: %s, does not match any valid commands. Please enter a valid one:",
-                        commandStringParts[0]));
+                        commandString));
             }
         } else {
             System.out.println("Commands must start with a /");
@@ -138,14 +167,14 @@ public final class ProgrammingAssignment2Client {
     private static void postGroupMessage(String subject, String body,
             String groupString) throws IOException {
         if (isConnected) {
-            String[] valueStrings = { subject, body, Integer.toString(socketControls.userID), groupString };
+            String[] valueStrings = { body, subject, Integer.toString(socketControls.userID), groupString };
             socketControls.writeToSocket("grouppost", valueStrings);
         } else {
             notConnectedMessage();
         }
     }
 
-    private static void retrieveGroupMessage(String messageID, String groupString) {
+    private static void retrieveGroupMessage(int messageID, String groupString) {
         if (isConnected) {
 
             String[] valueStrings = { String.valueOf(messageID), groupString };
@@ -210,25 +239,25 @@ public final class ProgrammingAssignment2Client {
     }
 
     private static void printCommandList() {
-        System.out.println("/connect {IP address} {Port Number}\n");
+        System.out.println("/connect\n");
         System.out.println("/join\n");
-        System.out.println("/post {Subject} {Body}\n");
+        System.out.println("/post\n");
         System.out.println("/users\n");
         System.out.println("/groups\n");
-        System.out.println("/message {Message ID}\n");
+        System.out.println("/message\n");
         System.out.println("/leave\n");
-        System.out.println("/grouppost {Subject} {Body} {GroupID or Group name} \n");
-        System.out.println("/groupusers {GroupID or Group name}\n");
-        System.out.println("/groupmessage {Message ID} {GroupID or Group name}\n");
-        System.out.println("/groupjoin {GroupID or Group name}\n");
-        System.out.println("/groupleave {GroupID or Group name}\n");
+        System.out.println("/grouppost\n");
+        System.out.println("/groupusers\n");
+        System.out.println("/groupmessage\n");
+        System.out.println("/groupjoin\n");
+        System.out.println("/groupleave\n");
         System.out.println("/exit\n");
         System.out.println("Or type /help to see these commands again\n");
     }
 
     private static void postMessage(String subject, String body) throws IOException {
         if (isConnected) {
-            String[] valueStrings = { subject, body, Integer.toString(socketControls.userID), };
+            String[] valueStrings = { body, subject, Integer.toString(socketControls.userID), };
             socketControls.writeToSocket("post", valueStrings);
         } else {
             notConnectedMessage();
@@ -269,14 +298,10 @@ public final class ProgrammingAssignment2Client {
 
     private static void requestGroupList() {
         if (isConnected) {
-
-            String[] valueStrings = {};
-            try {
-                socketControls.writeToSocket("groups", valueStrings);
-            } catch (IOException e) {
-
-                e.printStackTrace();
-            }
+            socketControls.groupMap.forEach((k, v) -> {
+                System.out.println(k + " " + v);
+            });
+            enterCommandMessage();
         } else {
             notConnectedMessage();
         }
@@ -299,7 +324,7 @@ public final class ProgrammingAssignment2Client {
     private static void connectToBoard(String ipAddr, int portNumber) throws UnknownHostException, IOException {
         if (!isConnected) {
             System.out.println("Please input a username:");
-            String username = reader.nextLine();
+            String username = reader.nextLine().trim();
             socketControls.createSocketConnection(ipAddr, portNumber, username);
             while (!isConnected) {
                 if (socketControls.readSocketResponse()) {
@@ -308,17 +333,12 @@ public final class ProgrammingAssignment2Client {
                     retryUsernameConnection();
                 }
             }
-
-        } else {
-            System.out.println("You're already connected!");
-            System.out.println("Enter a command: ");
-
         }
     }
 
     private static void retryUsernameConnection() {
         System.out.println("Sorry username was taken! Please enter another!");
-        String username = reader.nextLine();
+        String username = reader.nextLine().trim();
         try {
             String[] valueStrings = { username };
             socketControls.writeToSocket("connect", valueStrings);
@@ -343,16 +363,16 @@ public final class ProgrammingAssignment2Client {
 
     private static void notConnectedMessage() {
         System.out.println("You must first connect to a board to use this command!");
+        enterCommandMessage();
     }
 
-    private static void tooFewArguementsMessage() {
-        System.out.println(
-                "Command executed with too few arguments. Please try again with the correct arguments.");
+    private static void enterCommandMessage() {
+        System.out.println("Enter a command: ");
     }
 
     private static void groupErrorMessage(String groupString) {
-        System.out.println("Your entered group: " + groupString
-                + "does not correspond to a recognized group please enter a valid one");
+        System.out.println("The group you entered, " + groupString
+                + ", does not correspond to a recognized group please enter a valid one");
     }
 
     private static boolean validateGroup(String groupString) {
@@ -373,11 +393,15 @@ final class SocketReaderThread extends Thread {
 
     @Override
     public void run() {
+        try {
+            is = this.socketConnection.getInputStream();
+            controlWriter = new DataOutputStream(this.socketConnection.getOutputStream());
+            controlReader = new BufferedReader(new InputStreamReader(is));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
         while (!socketConnection.isClosed()) {
             try {
-                is = this.socketConnection.getInputStream();
-                controlWriter = new DataOutputStream(this.socketConnection.getOutputStream());
-                controlReader = new BufferedReader(new InputStreamReader(is));
                 while (controlReader.ready()) {
                     readSocketResponse();
                     System.out.println("Enter a command: ");
@@ -402,9 +426,6 @@ final class SocketReaderThread extends Thread {
             if (commandString.equals("post")) {
                 handlePostResponse(valueObject);
             }
-            if (commandString.equals("groups")) {
-                handleGroupsResponse(valueObject);
-            }
             if (commandString.equals("message")) {
                 handleMessageResponse(valueObject);
             }
@@ -414,9 +435,19 @@ final class SocketReaderThread extends Thread {
             if (commandString.equals("join")) {
                 handleJoinResponse(valueObject);
             }
+            if (commandString.equals("leave")) {
+                handleLeaveResponse(valueObject);
+            }
         } else {
             System.out.println("Sorry something went wrong. Please try again");
         }
+    }
+
+    private void handleLeaveResponse(Object valueObject) {
+        // TODO: Need false condition checks on all of these
+        JSONObject valueJson = new JSONObject(valueObject.toString());
+        String message = (String) valueJson.get("message");
+        System.out.println(message);
     }
 
     private void handleUsersResponse(Object valueObject) {
@@ -425,15 +456,6 @@ final class SocketReaderThread extends Thread {
         System.out.println("User List:");
         jsonTest.forEach(user -> {
             System.out.println(user.toString());
-        });
-    }
-
-    private void handleGroupsResponse(Object valueObject) {
-        JSONObject valueJson = new JSONObject(valueObject.toString());
-        JSONArray jsonTest = (JSONArray) valueJson.get("groups");
-        System.out.println("Group List:");
-        jsonTest.forEach(group -> {
-            System.out.println(group.toString());
         });
     }
 
